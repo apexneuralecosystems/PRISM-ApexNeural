@@ -9,6 +9,7 @@ import shutil
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+import random
 import motor.motor_asyncio
 import uuid
 import io
@@ -2218,8 +2219,8 @@ async def submit_interview_form(request: SubmitInterviewFormRequest):
                 detail="No team members are available at the selected time"
             )
         
-        # Select only ONE interviewer (first available)
-        selected_interviewer = free_members[0]
+        # Select only ONE interviewer (randomly from available members to distribute load)
+        selected_interviewer = random.choice(free_members)
         interviewer_email = selected_interviewer.get("email")
         interviewer_name = selected_interviewer.get("name", interviewer_email)
         
