@@ -9,6 +9,7 @@ import { ManageJobs } from "./components/ManageJobs";
 import { Auth } from "./components/Auth";
 import { ScheduleInterview } from "./components/ScheduleInterview";
 import { InterviewFeedback } from "./components/InterviewFeedback";
+import { OfferResponse } from "./components/OfferResponse";
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/jobs" element={<Jobs />} />
         <Route path="/schedule-interview" element={<ScheduleInterview />} />
         <Route path="/interview-feedback" element={<InterviewFeedback />} />
+        <Route path="/offer-response" element={<OfferResponse />} />
       </Routes>
     </Router>
   );

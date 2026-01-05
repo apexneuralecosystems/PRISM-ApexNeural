@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-    Pencil, Plus, Trash2, X,
+    Pencil, Plus, Trash2, X, Save,
     Upload, CheckCircle, MapPin, Mail, Phone,
-    Briefcase, GraduationCap, Award, Globe, Github, Linkedin, FileText, LogOut
+    Briefcase, GraduationCap, Award, Globe, Github, Linkedin, FileText, LogOut, User
 } from 'lucide-react';
 import { authenticatedFetch, clearAuthAndRedirect } from '../utils/auth';
 import { API_BASE_URL, API_ENDPOINTS } from '../config/api';
@@ -32,14 +32,6 @@ interface Experience {
     description: string;
 }
 
-interface Language {
-    id: string;
-    name: string;
-    canSpeak: boolean;
-    canRead: boolean;
-    canWrite: boolean;
-}
-
 interface Certification {
     id: string;
     name: string;
@@ -50,7 +42,6 @@ interface Certification {
 }
 
 interface UserProfileData {
-    // Basic Info
     fullName: string;
     gender: string;
     dob: string;
@@ -59,18 +50,11 @@ interface UserProfileData {
     email: string;
     profilePhoto: File | null;
     profilePhotoUrl: string;
-
-    // Summary
     summary: string;
-
-    // Collections
     education: Education[];
-    skills: string[]; // Custom + Predefined
-    languages: Language[];
+    skills: string[];
     experience: Experience[];
     certifications: Certification[];
-
-    // Others
     resume: File | null;
     resumeName: string;
     resumeUrl: string;
@@ -80,41 +64,20 @@ interface UserProfileData {
 
 // --- Initial Data ---
 
-const INITIAL_DATA: UserProfileData = {
-    fullName: "Akshaay KG",
-    gender: "Male",
-    dob: "2000-01-01",
-    location: "Bhopal, MP, India",
-    phone: "+91 9876543210",
-    email: "akshaay.kg2021@vitbhopal.ac.in",
-    profilePhoto: null, // Would be a URL in real app
+const EMPTY_DATA: UserProfileData = {
+    fullName: "",
+    gender: "",
+    dob: "",
+    location: "",
+    phone: "",
+    email: "",
+    profilePhoto: null,
     profilePhotoUrl: "",
-
-    summary: "Passionate Full Stack Developer with experience in building scalable web applications.",
-
-    education: [
-        {
-            id: '1',
-            institute: 'VIT Bhopal University',
-            degree: 'B.Tech',
-            specialization: 'Computer Science',
-            startDate: '2021-08-01',
-            endDate: '2025-05-01',
-            gradeType: 'CGPA',
-            gradeValue: '9.2'
-        }
-    ],
-
-    skills: ['React', 'Python', 'FastAPI'],
-
-    languages: [
-        { id: '1', name: 'English', canSpeak: true, canRead: true, canWrite: true },
-        { id: '2', name: 'Hindi', canSpeak: true, canRead: true, canWrite: true }
-    ],
-
+    summary: "",
+    education: [],
+    skills: [],
     experience: [],
     certifications: [],
-
     resume: null,
     resumeName: "",
     resumeUrl: "",
@@ -127,70 +90,90 @@ const INITIAL_DATA: UserProfileData = {
 const SectionCard = ({
     title,
     icon: Icon,
-    isEditing,
-    onEdit,
-    onSave,
-    onCancel,
     children
 }: {
     title: string;
     icon?: any;
-    isEditing: boolean;
-    onEdit?: () => void;
-    onSave?: () => void;
-    onCancel?: () => void;
     children: React.ReactNode;
 }) => {
     return (
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 mb-6 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
-                <div className="flex items-center gap-3">
-                    {Icon && <Icon className="w-5 h-5 text-blue-600" />}
-                    <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
-                </div>
-                {!isEditing && onEdit && (
-                    <button
-                        onClick={onEdit}
-                        className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
-                    >
-                        <Pencil className="w-4 h-4" /> Edit
-                    </button>
-                )}
-                {isEditing && (
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={onCancel}
-                            className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
-                            title="Cancel"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={onSave}
-                            className="p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-full transition-colors"
-                            title="Save"
-                        >
-                            <CheckCircle className="w-5 h-5" />
-                        </button>
-                    </div>
-                )}
+        <div style={{
+            background: '#ffffff',
+            borderRadius: '12px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+            border: '1px solid #e5e7eb',
+            marginBottom: '24px',
+            padding: '28px'
+        }}>
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                marginBottom: '24px',
+                borderBottom: '2px solid #f3f4f6',
+                paddingBottom: '12px'
+            }}>
+                {Icon && <Icon style={{ width: '22px', height: '22px', color: '#2563eb' }} />}
+                <h2 style={{
+                    fontSize: '20px',
+                    fontWeight: '600',
+                    color: '#1f2937',
+                    margin: 0
+                }}>{title}</h2>
             </div>
-            <div className="p-6">
+            <div>
                 {children}
             </div>
         </div>
     );
 };
 
-// --- Main Component ---
+// --- Validation Functions ---
+const validatePhone = (phone: string) => {
+    if (!phone) return true; // Allow empty
+    return /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/.test(phone);
+};
 
-import { useNavigate } from 'react-router-dom';
+const validateUrl = (url: string) => {
+    if (!url) return true;
+    return /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/.test(url);
+};
+
+const validateGrade = (value: string, type: 'Percentage' | 'CGPA') => {
+    if (!value) return true;
+    const num = parseFloat(value);
+    if (isNaN(num)) return false;
+    if (type === 'Percentage') {
+        return num >= 0 && num <= 100;
+    } else {
+        return num >= 0 && num <= 10;
+    }
+};
+
+const isValidNumber = (value: string) => {
+    return /^\d*\.?\d*$/.test(value);
+};
+
+const isValidPhoneChar = (value: string) => {
+    return /^[+\d\s\-()]*$/.test(value);
+};
+
+// --- Main Component ---
 
 export function UserProfile() {
     const navigate = useNavigate();
-    const [data, setData] = useState<UserProfileData>(INITIAL_DATA);
+    const [data, setData] = useState<UserProfileData>(EMPTY_DATA);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
+        // Clear data on mount to prevent showing stale data
+        setData(EMPTY_DATA);
+        setIsLoading(true);
+
         // Check authentication
         const token = localStorage.getItem('access_token');
         const userData = localStorage.getItem('user');
@@ -207,7 +190,12 @@ export function UserProfile() {
                 navigate('/organization-profile');
                 return;
             }
-            setData(prev => ({ ...prev, email: parsedUser.email, fullName: parsedUser.name || prev.fullName }));
+            // Only set email and name from localStorage, keep rest empty
+            setData(prev => ({ 
+                ...prev, 
+                email: parsedUser.email || "", 
+                fullName: parsedUser.name || "" 
+            }));
         }
 
         // Fetch profile data
@@ -222,14 +210,14 @@ export function UserProfile() {
                 );
 
                 if (!res) {
-                    // Already redirected by authenticatedFetch
+                    setIsLoading(false);
                     return;
                 }
 
                 if (res.ok) {
                     const result = await res.json();
                     if (result.profile) {
-                        // Merge fetched data with initial structure to avoid missing fields
+                        // Merge fetched data with empty structure
                         setData(prev => ({ ...prev, ...result.profile }));
                     }
                 } else if (res.status === 401) {
@@ -239,23 +227,129 @@ export function UserProfile() {
             } catch (err) {
                 console.error("Failed to fetch profile:", err);
                 clearAuthAndRedirect(navigate);
+            } finally {
+                setIsLoading(false); // Set loading to false after fetch completes
             }
         };
 
         fetchProfile();
     }, [navigate]);
 
-    const [editingSection, setEditingSection] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const validateForm = () => {
+        const newErrors: Record<string, string> = {};
 
-    // Forms State (temporary state while editing)
-    const [tempData, setTempData] = useState<UserProfileData>(INITIAL_DATA);
+        // Phone validation
+        if (data.phone && !validatePhone(data.phone)) {
+            newErrors.phone = "Please enter a valid phone number (numbers, +, -, (), spaces only)";
+        }
+
+        // GitHub URL validation
+        if (data.githubUrl && !validateUrl(data.githubUrl)) {
+            newErrors.githubUrl = "Please enter a valid URL (e.g., https://github.com/username)";
+        }
+
+        // LinkedIn URL validation
+        if (data.linkedinUrl && !validateUrl(data.linkedinUrl)) {
+            newErrors.linkedinUrl = "Please enter a valid URL (e.g., https://linkedin.com/in/username)";
+        }
+
+        // Education validation
+        data.education.forEach((edu, idx) => {
+            if (edu.gradeValue && !validateGrade(edu.gradeValue, edu.gradeType)) {
+                newErrors[`education_${idx}_grade`] = `${edu.gradeType} must be between 0-${edu.gradeType === 'Percentage' ? '100' : '10'}`;
+            }
+        });
+
+        // Certification URL validation
+        data.certifications.forEach((cert, idx) => {
+            if (cert.url && !validateUrl(cert.url)) {
+                newErrors[`cert_${idx}_url`] = "Please enter a valid URL";
+            }
+        });
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
 
     const saveToBackend = async (dataToSave: UserProfileData) => {
         setLoading(true);
         setMessage(null);
         try {
+            // Handle profile photo upload
+            if (dataToSave.profilePhoto instanceof File) {
+                const formData = new FormData();
+                formData.append('file', dataToSave.profilePhoto);
+
+                const uploadRes = await authenticatedFetch(
+                    API_ENDPOINTS.UPLOAD,
+                    {
+                        method: 'POST',
+                        body: formData
+                    },
+                    navigate
+                );
+
+                if (!uploadRes) {
+                    setLoading(false);
+                    return false;
+                }
+
+                if (uploadRes.ok) {
+                    const uploadData = await uploadRes.json();
+                    dataToSave.profilePhotoUrl = uploadData.url;
+                    dataToSave.profilePhoto = null;
+                } else {
+                    setMessage({ type: 'error', text: 'Failed to upload profile photo' });
+                    setLoading(false);
+                    return false;
+                }
+            }
+
+            // Handle resume upload
+            if (dataToSave.resume instanceof File) {
+                const formData = new FormData();
+                formData.append('file', dataToSave.resume);
+
+                const uploadRes = await authenticatedFetch(
+                    API_ENDPOINTS.UPLOAD,
+                    {
+                        method: 'POST',
+                        body: formData
+                    },
+                    navigate
+                );
+
+                if (!uploadRes) {
+                    setLoading(false);
+                    return false;
+                }
+
+                if (uploadRes.ok) {
+                    const uploadData = await uploadRes.json();
+                    dataToSave.resumeUrl = uploadData.url;
+                    dataToSave.resumeName = uploadData.filename;
+                    dataToSave.resume = null;
+                } else {
+                    setMessage({ type: 'error', text: 'Failed to upload resume' });
+                    setLoading(false);
+                    return false;
+                }
+            }
+
+            // Create clean copy for storage - remove File objects
+            const finalData = { ...dataToSave };
+            if (finalData.resume instanceof File) {
+                // @ts-ignore
+                finalData.resume = null;
+            }
+            if (finalData.profilePhoto instanceof File) {
+                // @ts-ignore
+                finalData.profilePhoto = null;
+            }
+
+            // Filter out empty strings from skills array
+            finalData.skills = finalData.skills.filter(skill => skill && skill.trim() !== '');
+
             const res = await authenticatedFetch(
                 API_ENDPOINTS.USER_PROFILE,
                 {
@@ -263,18 +357,21 @@ export function UserProfile() {
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(dataToSave)
+                    body: JSON.stringify(finalData)
                 },
                 navigate
             );
 
             if (!res) {
-                // Already redirected by authenticatedFetch
+                setLoading(false);
                 return false;
             }
 
             if (res.ok) {
                 setMessage({ type: 'success', text: 'Profile saved successfully!' });
+                setIsEditMode(false);
+                // Auto-hide success message after 3 seconds
+                setTimeout(() => setMessage(null), 3000);
                 return true;
             } else {
                 setMessage({ type: 'error', text: 'Failed to save profile' });
@@ -288,6 +385,15 @@ export function UserProfile() {
         }
     };
 
+    const handleSave = async () => {
+        if (!validateForm()) {
+            setMessage({ type: 'error', text: 'Please fix validation errors before saving' });
+            return;
+        }
+
+        await saveToBackend(data);
+    };
+
     const handleLogout = async () => {
         const refreshToken = localStorage.getItem("refresh_token");
         if (refreshToken) {
@@ -297,7 +403,9 @@ export function UserProfile() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ refresh_token: refreshToken })
                 });
-            } catch (error) { console.error("Logout error", error); }
+            } catch (error) { 
+                console.error("Logout error", error); 
+            }
         }
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
@@ -305,280 +413,284 @@ export function UserProfile() {
         navigate("/auth");
     };
 
-    const startEditing = (section: string) => {
-        setTempData({ ...data }); // Clone current data to temp
-        setEditingSection(section);
-    };
-
-    const cancelEditing = () => {
-        setEditingSection(null);
-        setTempData(INITIAL_DATA); // Reset temp safety
-    };
-
-    const saveSection = async (section: string) => {
-        let newData = { ...data, ...tempData };
-
-        // Handle profile photo upload (similar to resume)
-        if (section === 'basic' && tempData.profilePhoto instanceof File) {
-            setLoading(true);
-            try {
-                const formData = new FormData();
-                formData.append('file', tempData.profilePhoto);
-
-                const uploadRes = await authenticatedFetch(
-                    API_ENDPOINTS.UPLOAD,
-                    {
-                        method: 'POST',
-                        body: formData
-                    },
-                    navigate
-                );
-
-                if (!uploadRes) {
-                    setLoading(false);
-                    return;
-                }
-
-                if (uploadRes.ok) {
-                    const uploadData = await uploadRes.json();
-                    newData.profilePhotoUrl = uploadData.url;
-                    newData.profilePhoto = null; // Clear file object after upload
-                } else {
-                    console.error("Upload failed");
-                    setMessage({ type: 'error', text: 'Failed to upload profile photo' });
-                    setLoading(false);
-                    return;
-                }
-            } catch (err) {
-                console.error("Upload error", err);
-                setMessage({ type: 'error', text: 'Error uploading profile photo' });
-                setLoading(false);
-                return;
-            } finally {
-                setLoading(false);
-            }
+    const handleChange = (field: keyof UserProfileData, value: any) => {
+        setData(prev => ({ ...prev, [field]: value }));
+        // Clear error for this field when user starts typing
+        if (errors[field]) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[field];
+                return newErrors;
+            });
         }
-
-        // Handle resume upload
-        if (section === 'resume' && tempData.resume instanceof File) {
-            setLoading(true);
-            try {
-                const formData = new FormData();
-                formData.append('file', tempData.resume);
-
-                const uploadRes = await authenticatedFetch(
-                    API_ENDPOINTS.UPLOAD,
-                    {
-                        method: 'POST',
-                        body: formData
-                    },
-                    navigate
-                );
-
-                if (!uploadRes) {
-                    setLoading(false);
-                    return;
-                }
-
-                if (uploadRes.ok) {
-                    const uploadData = await uploadRes.json();
-                    newData.resumeUrl = uploadData.url;
-                    newData.resumeName = uploadData.filename;
-                    newData.resume = null; // Clear file object after upload
-                } else {
-                    console.error("Upload failed");
-                    setMessage({ type: 'error', text: 'Failed to upload resume' });
-                    setLoading(false);
-                    return;
-                }
-            } catch (err) {
-                console.error("Upload error", err);
-                setMessage({ type: 'error', text: 'Error uploading resume' });
-                setLoading(false);
-                return;
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        // Filter out empty strings from skills array
-        if (section === 'skills' && Array.isArray(newData.skills)) {
-            newData.skills = newData.skills.filter(skill => skill && skill.trim() !== '');
-        }
-
-        // Create a clean copy for storage - remove File objects
-        const finalData = { ...newData };
-        if (finalData.resume instanceof File) {
-            // @ts-ignore
-            finalData.resume = null;
-        } else if (section === 'resume') {
-            // @ts-ignore
-            finalData.resume = null;
-        }
-        if (finalData.profilePhoto instanceof File) {
-            // @ts-ignore
-            finalData.profilePhoto = null;
-        } else if (section === 'basic') {
-            // @ts-ignore
-            finalData.profilePhoto = null;
-        }
-
-        setData(newData);
-        await saveToBackend(finalData);
-        setEditingSection(null);
-    }; // End saveSection
-
-    const handleGlobalSubmit = async () => {
-        await saveToBackend(data);
-    };
-
-    // --- Handlers for Inputs ---
-    const handleTempChange = (field: keyof UserProfileData, value: any) => {
-        setTempData(prev => ({ ...prev, [field]: value }));
     };
 
     // --- Render Functions ---
 
     const renderBasicInfo = () => {
-        const isEditing = editingSection === 'basic';
-
-        if (isEditing) {
+        if (!isEditMode) {
             return (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="col-span-full flex items-center gap-4 mb-4">
-                        <div className="w-20 h-20 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden relative">
-                            {tempData.profilePhotoUrl ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px' }}>
+                        <div style={{
+                            width: '140px',
+                            height: '140px',
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            overflow: 'hidden',
+                            boxShadow: '0 8px 16px rgba(102, 126, 234, 0.4)',
+                            border: '4px solid #ffffff',
+                            position: 'relative'
+                        }}>
+                            {data.profilePhotoUrl ? (
                                 <img 
-                                    src={tempData.profilePhotoUrl.startsWith('http') ? tempData.profilePhotoUrl : `${API_BASE_URL}${tempData.profilePhotoUrl}`} 
+                                    src={data.profilePhotoUrl.startsWith('http') ? data.profilePhotoUrl : `${API_BASE_URL}${data.profilePhotoUrl}`}
                                     alt="Profile" 
-                                    className="w-full h-full object-cover" 
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute' }}
                                 />
                             ) : (
-                                <span className="text-2xl text-slate-400">📷</span>
+                                <User style={{ width: '70px', height: '70px', color: '#ffffff' }} />
                             )}
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Profile Photo</label>
-                            <input
-                                type="file"
-                                className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                        const url = URL.createObjectURL(file);
-                                        setTempData(prev => ({ ...prev, profilePhoto: file, profilePhotoUrl: url }));
-                                    }
-                                }}
-                            />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
+                                <User style={{ width: '16px', height: '16px' }} /> Name
+                            </p>
+                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.fullName}</p>
                         </div>
-                    </div>
-
-                    <div>
-                        <label className="label">Full Name <span className="text-xs text-slate-400 font-normal">(Read Only)</span></label>
-                        <input
-                            type="text"
-                            className="input-field bg-slate-100 text-slate-500 cursor-not-allowed"
-                            value={tempData.fullName}
-                            readOnly
-                            disabled
-                        />
-                    </div>
-                    <div>
-                        <label className="label">Gender</label>
-                        <select
-                            className="input-field"
-                            value={tempData.gender}
-                            onChange={e => handleTempChange('gender', e.target.value)}
-                        >
-                            <option>Male</option>
-                            <option>Female</option>
-                            <option>Other</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="label">Date of Birth</label>
-                        <input
-                            type="date" className="input-field"
-                            value={tempData.dob}
-                            onChange={e => handleTempChange('dob', e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <label className="label">Location</label>
-                        <input
-                            type="text" className="input-field" placeholder="City, State, Country"
-                            value={tempData.location}
-                            onChange={e => handleTempChange('location', e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <label className="label">Phone Number</label>
-                        <input
-                            type="tel" className="input-field"
-                            value={tempData.phone}
-                            onChange={e => handleTempChange('phone', e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <label className="label">Email Address <span className="text-xs text-slate-400 font-normal">(Read Only)</span></label>
-                        <input
-                            type="email"
-                            className="input-field bg-slate-100 text-slate-500 cursor-not-allowed"
-                            value={tempData.email}
-                            readOnly
-                            disabled
-                        />
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
+                                <MapPin style={{ width: '16px', height: '16px' }} /> Location
+                            </p>
+                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.location || "Not specified"}</p>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
+                                <Mail style={{ width: '16px', height: '16px' }} /> Email
+                            </p>
+                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.email}</p>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
+                                <Phone style={{ width: '16px', height: '16px' }} /> Phone
+                            </p>
+                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.phone || "Not specified"}</p>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', fontWeight: '500' }}>Gender</p>
+                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.gender || "Not specified"}</p>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', fontWeight: '500' }}>Date of Birth</p>
+                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.dob || "Not specified"}</p>
+                        </div>
                     </div>
                 </div>
             );
         }
 
         return (
-            <div className="flex flex-col md:flex-row gap-6 items-start">
-                <div className="w-24 h-24 rounded-full bg-slate-200 shrink-0 overflow-hidden">
-                    {data.profilePhotoUrl ? (
-                        <img 
-                            src={data.profilePhotoUrl.startsWith('http') ? data.profilePhotoUrl : `${API_BASE_URL}${data.profilePhotoUrl}`} 
-                            alt="Profile" 
-                            className="w-full h-full object-cover" 
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                    <div style={{
+                        width: '140px',
+                        height: '140px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                        boxShadow: '0 8px 16px rgba(102, 126, 234, 0.4)',
+                        border: '4px solid #ffffff'
+                    }}>
+                        {data.profilePhotoUrl ? (
+                            <img 
+                                src={data.profilePhotoUrl.startsWith('http') ? data.profilePhotoUrl : `${API_BASE_URL}${data.profilePhotoUrl}`} 
+                                alt="Profile" 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                        ) : (
+                            <User style={{ width: '70px', height: '70px', color: '#ffffff' }} />
+                        )}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Profile Photo</label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            style={{
+                                display: 'block',
+                                width: '100%',
+                                fontSize: '14px',
+                                color: '#4b5563',
+                                padding: '10px',
+                                border: '2px dashed #d1d5db',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                background: '#f9fafb'
+                            }}
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    const url = URL.createObjectURL(file);
+                                    handleChange('profilePhoto', file);
+                                    handleChange('profilePhotoUrl', url);
+                                }
+                            }}
                         />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center text-3xl">👤</div>
-                    )}
+                    </div>
                 </div>
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '18px' }}>
                     <div>
-                        <p className="text-sm text-slate-500">Name</p>
-                        <p className="font-medium">{data.fullName}</p>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                            Full Name <span style={{ fontSize: '12px', color: '#9ca3af' }}>(Read Only)</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={data.fullName}
+                            readOnly
+                            disabled
+                            style={{
+                                width: '100%',
+                                padding: '10px 14px',
+                                background: '#f3f4f6',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '8px',
+                                color: '#6b7280',
+                                fontSize: '14px',
+                                cursor: 'not-allowed'
+                            }}
+                        />
                     </div>
                     <div>
-                        <p className="text-sm text-slate-500">Location</p>
-                        <div className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-slate-400" />
-                            <p className="font-medium">{data.location}</p>
-                        </div>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Gender</label>
+                        <select
+                            value={data.gender}
+                            onChange={e => handleChange('gender', e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '10px 14px',
+                                background: '#ffffff',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                color: '#111827',
+                                cursor: 'pointer',
+                                outline: 'none'
+                            }}
+                        >
+                            <option value="">Select Gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
                     </div>
                     <div>
-                        <p className="text-sm text-slate-500">Email</p>
-                        <div className="flex items-center gap-1">
-                            <Mail className="w-3 h-3 text-slate-400" />
-                            <p className="font-medium">{data.email}</p>
-                        </div>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Date of Birth</label>
+                        <input
+                            type="date"
+                            value={data.dob}
+                            onChange={e => handleChange('dob', e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '10px 14px',
+                                background: '#ffffff',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                color: '#111827',
+                                outline: 'none'
+                            }}
+                        />
                     </div>
                     <div>
-                        <p className="text-sm text-slate-500">Phone</p>
-                        <div className="flex items-center gap-1">
-                            <Phone className="w-3 h-3 text-slate-400" />
-                            <p className="font-medium">{data.phone}</p>
-                        </div>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Location</label>
+                        <input
+                            type="text"
+                            placeholder="City, State, Country"
+                            value={data.location}
+                            onChange={e => handleChange('location', e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '10px 14px',
+                                background: '#ffffff',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                color: '#111827',
+                                outline: 'none'
+                            }}
+                        />
                     </div>
                     <div>
-                        <p className="text-sm text-slate-500">Gender</p>
-                        <p className="font-medium">{data.gender}</p>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                            Phone Number <span style={{ color: '#9ca3af', fontSize: '12px' }}>(Numbers only)</span>
+                        </label>
+                        <input
+                            type="tel"
+                            placeholder="+1 234 567 8900"
+                            value={data.phone}
+                            onChange={e => {
+                                const value = e.target.value;
+                                // Only allow valid phone characters
+                                if (isValidPhoneChar(value)) {
+                                    handleChange('phone', value);
+                                }
+                            }}
+                            onBlur={() => {
+                                // Validate on blur
+                                if (data.phone && !validatePhone(data.phone)) {
+                                    setErrors(prev => ({ ...prev, phone: "Please enter a valid phone number" }));
+                                } else {
+                                    setErrors(prev => {
+                                        const newErrors = { ...prev };
+                                        delete newErrors.phone;
+                                        return newErrors;
+                                    });
+                                }
+                            }}
+                            style={{
+                                width: '100%',
+                                padding: '10px 14px',
+                                background: '#ffffff',
+                                border: errors.phone ? '2px solid #ef4444' : '1px solid #d1d5db',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                color: '#111827',
+                                outline: 'none'
+                            }}
+                        />
+                        {errors.phone && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', fontWeight: '500' }}>⚠️ {errors.phone}</p>}
                     </div>
                     <div>
-                        <p className="text-sm text-slate-500">Date of Birth</p>
-                        <p className="font-medium">{data.dob}</p>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                            Email Address <span style={{ fontSize: '12px', color: '#9ca3af' }}>(Read Only)</span>
+                        </label>
+                        <input
+                            type="email"
+                            value={data.email}
+                            readOnly
+                            disabled
+                            style={{
+                                width: '100%',
+                                padding: '10px 14px',
+                                background: '#f3f4f6',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '8px',
+                                color: '#6b7280',
+                                fontSize: '14px',
+                                cursor: 'not-allowed'
+                            }}
+                        />
                     </div>
                 </div>
             </div>
@@ -586,538 +698,1299 @@ export function UserProfile() {
     };
 
     const renderSummary = () => {
-        if (editingSection === 'summary') {
+        if (!isEditMode) {
             return (
-                <div>
-                    <label className="label">Profile Summary</label>
-                    <textarea
-                        className="input-field min-h-[120px]"
-                        value={tempData.summary}
-                        onChange={e => handleTempChange('summary', e.target.value)}
-                        placeholder="Write a short professional summary..."
-                    />
-                </div>
+                <p style={{
+                    color: '#374151',
+                    lineHeight: '1.7',
+                    fontSize: '15px',
+                    margin: 0,
+                    padding: '16px',
+                    background: '#f8fafc',
+                    borderRadius: '10px',
+                    border: '1px solid #e2e8f0'
+                }}>
+                    {data.summary || "No summary added yet."}
+                </p>
             );
         }
-        return <p className="text-slate-700 leading-relaxed">{data.summary || "No summary added."}</p>;
-    };
-
-    const renderEducation = () => {
-        // Helper to add/remove education in temp state
-        const addEdu = () => {
-            const newEdu: Education = {
-                id: Date.now().toString(),
-                institute: '', degree: '', specialization: '', startDate: '', endDate: '', gradeType: 'Percentage', gradeValue: ''
-            };
-            setTempData(prev => ({ ...prev, education: [...prev.education, newEdu] }));
-        };
-
-        const updateEdu = (index: number, field: keyof Education, val: string) => {
-            const newEdus = [...tempData.education];
-            newEdus[index] = { ...newEdus[index], [field]: val };
-            setTempData(prev => ({ ...prev, education: newEdus }));
-        };
-
-        const removeEdu = (index: number) => {
-            const newEdus = [...tempData.education];
-            newEdus.splice(index, 1);
-            setTempData(prev => ({ ...prev, education: newEdus }));
-        };
-
-        if (editingSection === 'education') {
-            return (
-                <div className="space-y-6">
-                    {tempData.education.map((edu, idx) => (
-                        <div key={edu.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200 relative">
-                            <button onClick={() => removeEdu(idx)} className="absolute top-2 right-2 text-red-500 hover:bg-red-50 p-1 rounded">
-                                <Trash2 className="w-4 h-4" />
-                            </button>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="label">Institute / College</label>
-                                    <input type="text" className="input-field" value={edu.institute} onChange={e => updateEdu(idx, 'institute', e.target.value)} />
-                                </div>
-                                <div>
-                                    <label className="label">Degree / Course</label>
-                                    <input type="text" className="input-field" value={edu.degree} onChange={e => updateEdu(idx, 'degree', e.target.value)} />
-                                </div>
-                                <div>
-                                    <label className="label">Specialization / Stream</label>
-                                    <input type="text" className="input-field" value={edu.specialization} onChange={e => updateEdu(idx, 'specialization', e.target.value)} />
-                                </div>
-                                <div>
-                                    <label className="label">Start Date</label>
-                                    <input type="date" className="input-field" value={edu.startDate} onChange={e => updateEdu(idx, 'startDate', e.target.value)} />
-                                </div>
-                                <div>
-                                    <label className="label">End Date</label>
-                                    <input type="date" className="input-field" value={edu.endDate} onChange={e => updateEdu(idx, 'endDate', e.target.value)} />
-                                </div>
-                                <div>
-                                    <label className="label">Grade Type</label>
-                                    <select className="input-field" value={edu.gradeType} onChange={e => updateEdu(idx, 'gradeType', e.target.value)}>
-                                        <option>Percentage</option>
-                                        <option>CGPA</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="label">Grade Value</label>
-                                    <input type="text" className="input-field" value={edu.gradeValue} onChange={e => updateEdu(idx, 'gradeValue', e.target.value)} />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                    <button onClick={addEdu} className="text-blue-600 font-medium flex items-center gap-2 hover:bg-blue-50 px-3 py-2 rounded">
-                        <Plus className="w-4 h-4" /> Add Education
-                    </button>
-                </div>
-            );
-        }
-
         return (
-            <div className="space-y-4">
-                {data.education.map(edu => (
-                    <div key={edu.id} className="flex gap-4 items-start">
-                        <div className="mt-1"><GraduationCap className="w-5 h-5 text-slate-400" /></div>
-                        <div>
-                            <h3 className="font-semibold text-slate-800">{edu.degree} {edu.specialization ? `in ${edu.specialization}` : ''}</h3>
-                            <p className="text-slate-600">{edu.institute}</p>
-                            <p className="text-sm text-slate-500">{edu.startDate} - {edu.endDate} | {edu.gradeType}: {edu.gradeValue}</p>
-                        </div>
-                    </div>
-                ))}
-                {data.education.length === 0 && <p className="text-slate-500 italic">No education details added.</p>}
+            <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Profile Summary</label>
+                <textarea
+                    value={data.summary}
+                    onChange={e => handleChange('summary', e.target.value)}
+                    placeholder="Write a short professional summary about yourself..."
+                    rows={5}
+                    style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        background: '#ffffff',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        color: '#111827',
+                        outline: 'none',
+                        resize: 'vertical',
+                        fontFamily: 'inherit',
+                        lineHeight: '1.6'
+                    }}
+                />
             </div>
         );
     };
 
     const renderSkills = () => {
-        const predefinedSkills = ['React', 'Angular', 'Vue', 'Python', 'Java', 'SQL', 'MongoDB', 'Node.js', 'Machine Learning', 'AWS'];
+        const predefinedSkills = ['React', 'Angular', 'Vue', 'Python', 'Java', 'SQL', 'MongoDB', 'Node.js', 'Machine Learning', 'AWS', 'Docker', 'Kubernetes'];
 
-        if (editingSection === 'skills') {
+        if (!isEditMode) {
             return (
-                <div onKeyDown={(e) => {
-                    // Allow saving the section by pressing Enter (e.g. after selecting from dropdown)
-                    // But ignore if it's the custom input dealing with a new value
-                    if (e.key === 'Enter') {
-                        saveSection('skills');
-                    }
-                }}>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                        {tempData.skills.map(skill => (
-                            <span key={skill} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
-                                {skill}
-                                <button onClick={() => {
-                                    setTempData(prev => ({ ...prev, skills: prev.skills.filter(s => s !== skill) }));
-                                }}>
-                                    <X className="w-3 h-3" />
-                                </button>
-                            </span>
-                        ))}
-                    </div>
-
-                    <div className="mb-4">
-                        <label className="label">Add Skills</label>
-                        <select
-                            className="input-field mb-2"
-                            value=""
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') saveSection('skills');
-                            }}
-                            onChange={e => {
-                                const selectedValue = e.target.value.trim();
-                                if (selectedValue && !tempData.skills.includes(selectedValue)) {
-                                    setTempData(prev => ({ ...prev, skills: [...prev.skills, selectedValue] }));
-                                }
-                                // Reset dropdown to empty value
-                                e.target.value = "";
-                            }}
-                        >
-                            <option value="">Select a skill...</option>
-                            {predefinedSkills.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                        <div className="flex gap-2">
-                            <input
-                                id="custom-skill"
-                                type="text"
-                                className="input-field"
-                                placeholder="Or type custom skill, press Enter to add"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        const target = e.currentTarget;
-                                        const value = target.value.trim();
-                                        // If there's a value, we add it and STOP propagation so we don't save yet
-                                        if (value) {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            if (!tempData.skills.includes(value)) {
-                                                setTempData(prev => ({ ...prev, skills: [...prev.skills, value] }));
-                                                target.value = "";
-                                            }
-                                        }
-                                        // If empty, let it bubble up to the parent div to trigger save
-                                    }
-                                }}
-                            />
-                            <button
-                                onClick={() => {
-                                    const input = document.getElementById('custom-skill') as HTMLInputElement;
-                                    if (input.value && !tempData.skills.includes(input.value)) {
-                                        setTempData(prev => ({ ...prev, skills: [...prev.skills, input.value] }));
-                                        input.value = "";
-                                    }
-                                }}
-                                className="bg-slate-800 text-white px-4 rounded-lg hover:bg-slate-700"
-                            >
-                                Add
-                            </button>
-                        </div>
-                    </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                    {data.skills.map(skill => (
+                        <span key={skill} style={{
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: '#ffffff',
+                            padding: '8px 20px',
+                            borderRadius: '25px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+                            border: 'none'
+                        }}>
+                            {skill}
+                        </span>
+                    ))}
+                    {data.skills.length === 0 && <p style={{ color: '#6b7280', fontStyle: 'italic', fontSize: '14px' }}>No skills added yet.</p>}
                 </div>
             );
         }
 
         return (
-            <div className="flex flex-wrap gap-2">
-                {data.skills.map(skill => (
-                    <span key={skill} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm">
-                        {skill}
-                    </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+                    {data.skills.map(skill => (
+                        <span key={skill} style={{
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: '#ffffff',
+                            padding: '8px 16px',
+                            borderRadius: '25px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
+                        }}>
+                            {skill}
+                            <button
+                                onClick={() => handleChange('skills', data.skills.filter(s => s !== skill))}
+                                style={{
+                                    background: 'rgba(255,255,255,0.2)',
+                                    border: 'none',
+                                    borderRadius: '50%',
+                                    padding: '2px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                            >
+                                <X style={{ width: '14px', height: '14px', color: '#ffffff' }} />
+                            </button>
+                        </span>
+                    ))}
+                </div>
+
+                <div>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Add Skills</label>
+                    <select
+                        value=""
+                        onChange={e => {
+                            const selectedValue = e.target.value.trim();
+                            if (selectedValue && !data.skills.includes(selectedValue)) {
+                                handleChange('skills', [...data.skills, selectedValue]);
+                            }
+                        }}
+                        style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            background: '#ffffff',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            color: '#111827',
+                            marginBottom: '12px',
+                            cursor: 'pointer',
+                            outline: 'none'
+                        }}
+                    >
+                        <option value="">Select a skill...</option>
+                        {predefinedSkills.filter(s => !data.skills.includes(s)).map(s => (
+                            <option key={s} value={s}>{s}</option>
+                        ))}
+                    </select>
+                    
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <input
+                            id="custom-skill"
+                            type="text"
+                            placeholder="Or type custom skill and click Add"
+                            style={{
+                                flex: 1,
+                                padding: '10px 14px',
+                                background: '#ffffff',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                color: '#111827',
+                                outline: 'none'
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const input = e.currentTarget;
+                                    const value = input.value.trim();
+                                    if (value && !data.skills.includes(value)) {
+                                        handleChange('skills', [...data.skills, value]);
+                                        input.value = "";
+                                    }
+                                }
+                            }}
+                        />
+                        <button
+                            onClick={() => {
+                                const input = document.getElementById('custom-skill') as HTMLInputElement;
+                                const value = input.value.trim();
+                                if (value && !data.skills.includes(value)) {
+                                    handleChange('skills', [...data.skills, value]);
+                                    input.value = "";
+                                }
+                            }}
+                            style={{
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                color: '#ffffff',
+                                padding: '10px 24px',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                border: 'none',
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
+                            }}
+                        >
+                            Add
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderEducation = () => {
+        const addEdu = () => {
+            const newEdu: Education = {
+                id: Date.now().toString(),
+                institute: '', degree: '', specialization: '', startDate: '', endDate: '', gradeType: 'Percentage', gradeValue: ''
+            };
+            handleChange('education', [...data.education, newEdu]);
+        };
+
+        const updateEdu = (index: number, field: keyof Education, val: string) => {
+            const newEdus = [...data.education];
+            newEdus[index] = { ...newEdus[index], [field]: val };
+            handleChange('education', newEdus);
+        };
+
+        const removeEdu = (index: number) => {
+            const newEdus = data.education.filter((_, i) => i !== index);
+            handleChange('education', newEdus);
+        };
+
+        if (!isEditMode) {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {data.education.map(edu => (
+                        <div key={edu.id} style={{
+                            display: 'flex',
+                            gap: '16px',
+                            alignItems: 'flex-start',
+                            padding: '20px',
+                            background: 'linear-gradient(135deg, #e0f2fe 0%, #e0e7ff 100%)',
+                            borderRadius: '12px',
+                            border: '1px solid #dbeafe',
+                            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)'
+                        }}>
+                            <div style={{
+                                width: '48px',
+                                height: '48px',
+                                background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                                borderRadius: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                            }}>
+                                <GraduationCap style={{ width: '24px', height: '24px', color: '#ffffff' }} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <h3 style={{ fontWeight: '600', color: '#111827', fontSize: '16px', margin: 0 }}>{edu.degree} {edu.specialization ? `in ${edu.specialization}` : ''}</h3>
+                                <p style={{ color: '#4b5563', fontWeight: '500', marginTop: '4px', fontSize: '14px' }}>{edu.institute}</p>
+                                <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '8px' }}>{edu.startDate} - {edu.endDate} • {edu.gradeType}: {edu.gradeValue}</p>
+                            </div>
+                        </div>
+                    ))}
+                    {data.education.length === 0 && <p style={{ color: '#6b7280', fontStyle: 'italic', fontSize: '14px' }}>No education details added yet.</p>}
+                </div>
+            );
+        }
+
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {data.education.map((edu, idx) => (
+                    <div key={edu.id} style={{
+                        padding: '24px',
+                        paddingRight: '70px',
+                        background: '#fafafa',
+                        borderRadius: '12px',
+                        position: 'relative',
+                        border: '1px solid #e5e7eb'
+                    }}>
+                        <button
+                            onClick={() => removeEdu(idx)}
+                            style={{
+                                position: 'absolute',
+                                top: '16px',
+                                right: '16px',
+                                color: '#ef4444',
+                                background: '#fef2f2',
+                                padding: '10px',
+                                borderRadius: '8px',
+                                border: '1px solid #fee2e2',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#fee2e2';
+                                e.currentTarget.style.transform = 'scale(1.05)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#fef2f2';
+                                e.currentTarget.style.transform = 'scale(1)';
+                            }}
+                        >
+                            <Trash2 style={{ width: '18px', height: '18px' }} />
+                        </button>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                            gap: '14px'
+                        }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Institute / College</label>
+                                <input
+                                    type="text"
+                                    value={edu.institute}
+                                    onChange={e => updateEdu(idx, 'institute', e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#ffffff',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: '#111827',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Degree / Course</label>
+                                <input
+                                    type="text"
+                                    value={edu.degree}
+                                    onChange={e => updateEdu(idx, 'degree', e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#ffffff',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: '#111827',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Specialization / Stream</label>
+                                <input
+                                    type="text"
+                                    value={edu.specialization}
+                                    onChange={e => updateEdu(idx, 'specialization', e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#ffffff',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: '#111827',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Start Date</label>
+                                <input
+                                    type="month"
+                                    value={edu.startDate}
+                                    onChange={e => updateEdu(idx, 'startDate', e.target.value)}
+                                    max={edu.endDate || undefined}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#ffffff',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: '#111827',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>End Date</label>
+                                <input
+                                    type="month"
+                                    value={edu.endDate}
+                                    onChange={e => updateEdu(idx, 'endDate', e.target.value)}
+                                    min={edu.startDate || undefined}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#ffffff',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: '#111827',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+                                    Grade Value <span style={{ color: '#9ca3af', fontSize: '11px' }}>(Numbers only)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder={edu.gradeType === 'Percentage' ? '0-100' : '0-10'}
+                                    value={edu.gradeValue}
+                                    onChange={e => {
+                                        const value = e.target.value;
+                                        // Only allow numbers and decimal
+                                        if (isValidNumber(value)) {
+                                            updateEdu(idx, 'gradeValue', value);
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        // Validate on blur
+                                        const errorKey = `education_${idx}_grade`;
+                                        if (edu.gradeValue && !validateGrade(edu.gradeValue, edu.gradeType)) {
+                                            setErrors(prev => ({ 
+                                                ...prev, 
+                                                [errorKey]: `${edu.gradeType} must be 0-${edu.gradeType === 'Percentage' ? '100' : '10'}` 
+                                            }));
+                                        } else {
+                                            setErrors(prev => {
+                                                const newErrors = { ...prev };
+                                                delete newErrors[errorKey];
+                                                return newErrors;
+                                            });
+                                        }
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#ffffff',
+                                        border: errors[`education_${idx}_grade`] ? '2px solid #ef4444' : '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: '#111827',
+                                        outline: 'none'
+                                    }}
+                                />
+                                {errors[`education_${idx}_grade`] && (
+                                    <p style={{ color: '#ef4444', fontSize: '11px', marginTop: '4px', fontWeight: '500' }}>
+                                        ⚠️ {errors[`education_${idx}_grade`]}
+                                    </p>
+                                )}
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Grade Type</label>
+                                <select
+                                    value={edu.gradeType}
+                                    onChange={e => updateEdu(idx, 'gradeType', e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#ffffff',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: '#111827',
+                                        outline: 'none',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <option>Percentage</option>
+                                    <option>CGPA</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
                 ))}
-                {data.skills.length === 0 && <p className="text-slate-500 italic">No skills added.</p>}
+                <button
+                    onClick={addEdu}
+                    style={{
+                        color: '#2563eb',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: '#eff6ff',
+                        padding: '12px 20px',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        border: '1px solid #bfdbfe',
+                        cursor: 'pointer'
+                    }}
+                >
+                    <Plus style={{ width: '18px', height: '18px' }} /> Add Education
+                </button>
             </div>
         );
     };
 
     const renderExperience = () => {
-        // Similar to education, simplified for length
         const addExp = () => {
-            setTempData(prev => ({
-                ...prev,
-                experience: [...prev.experience, {
-                    id: Date.now().toString(),
-                    company: '', role: '', location: '', startDate: '', endDate: '', isCurrent: false, description: ''
-                }]
-            }));
+            handleChange('experience', [...data.experience, {
+                id: Date.now().toString(),
+                company: '', role: '', location: '', startDate: '', endDate: '', isCurrent: false, description: ''
+            }]);
         };
 
-        if (editingSection === 'experience') {
-            return (
-                <div className="space-y-6">
-                    {tempData.experience.map((exp, idx) => (
-                        <div key={exp.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200 relative grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <button onClick={() => {
-                                const newExp = [...tempData.experience];
-                                newExp.splice(idx, 1);
-                                setTempData(prev => ({ ...prev, experience: newExp }));
-                            }} className="absolute top-2 right-2 text-red-500"><Trash2 className="w-4 h-4" /></button>
+        const updateExp = (index: number, field: keyof Experience, val: any) => {
+            const newExps = [...data.experience];
+            newExps[index] = { ...newExps[index], [field]: val };
+            handleChange('experience', newExps);
+        };
 
-                            <div><label className="label">Company Name</label><input className="input-field" value={exp.company} onChange={e => {
-                                const newExp = [...tempData.experience]; newExp[idx].company = e.target.value; setTempData({ ...tempData, experience: newExp });
-                            }} /></div>
-                            <div><label className="label">Role / Position</label><input className="input-field" value={exp.role} onChange={e => {
-                                const newExp = [...tempData.experience]; newExp[idx].role = e.target.value; setTempData({ ...tempData, experience: newExp });
-                            }} /></div>
-                            <div><label className="label">Location</label><input className="input-field" value={exp.location} onChange={e => {
-                                const newExp = [...tempData.experience]; newExp[idx].location = e.target.value; setTempData({ ...tempData, experience: newExp });
-                            }} /></div>
-                            <div><label className="label">Start Date</label><input type="month" className="input-field" value={exp.startDate} onChange={e => {
-                                const newExp = [...tempData.experience]; newExp[idx].startDate = e.target.value; setTempData({ ...tempData, experience: newExp });
-                            }} /></div>
-                            <div><label className="label">End Date</label><input type="month" className="input-field" value={exp.endDate} onChange={e => {
-                                const newExp = [...tempData.experience]; newExp[idx].endDate = e.target.value; setTempData({ ...tempData, experience: newExp });
-                            }} /></div>
-                            <div className="col-span-full"><label className="label">Description</label><textarea className="input-field" value={exp.description} onChange={e => {
-                                const newExp = [...tempData.experience]; newExp[idx].description = e.target.value; setTempData({ ...tempData, experience: newExp });
-                            }} /></div>
+        const removeExp = (index: number) => {
+            handleChange('experience', data.experience.filter((_, i) => i !== index));
+        };
+
+        if (!isEditMode) {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {data.experience.map(exp => (
+                        <div key={exp.id} style={{
+                            display: 'flex',
+                            gap: '16px',
+                            padding: '20px',
+                            background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
+                            borderRadius: '12px',
+                            border: '1px solid #a7f3d0',
+                            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)'
+                        }}>
+                            <div style={{
+                                width: '48px',
+                                height: '48px',
+                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                borderRadius: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                            }}>
+                                <Briefcase style={{ width: '24px', height: '24px', color: '#ffffff' }} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <h3 style={{ fontWeight: '600', color: '#111827', fontSize: '16px', margin: 0 }}>{exp.role}</h3>
+                                <p style={{ fontWeight: '500', color: '#4b5563', marginTop: '4px', fontSize: '14px' }}>{exp.company}</p>
+                                <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '8px' }}>{exp.startDate} - {exp.isCurrent ? 'Present' : exp.endDate} • {exp.location}</p>
+                                <p style={{ fontSize: '14px', color: '#4b5563', marginTop: '12px', lineHeight: '1.6' }}>{exp.description}</p>
+                            </div>
                         </div>
                     ))}
-                    <button onClick={addExp} className="text-blue-600 font-medium flex items-center gap-2"><Plus className="w-4 h-4" /> Add Experience</button>
+                    {data.experience.length === 0 && <p style={{ color: '#6b7280', fontStyle: 'italic', fontSize: '14px' }}>No experience added yet.</p>}
                 </div>
             );
         }
 
         return (
-            <div className="space-y-6">
-                {data.experience.map(exp => (
-                    <div key={exp.id} className="flex gap-4">
-                        <div className="mt-1"><Briefcase className="w-5 h-5 text-slate-400" /></div>
-                        <div>
-                            <h3 className="font-semibold text-slate-800">{exp.role}</h3>
-                            <p className="font-medium text-slate-700">{exp.company}</p>
-                            <p className="text-sm text-slate-500 mb-2">{exp.startDate} - {exp.isCurrent ? 'Present' : exp.endDate} | {exp.location}</p>
-                            <p className="text-sm text-slate-600">{exp.description}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {data.experience.map((exp, idx) => (
+                    <div key={exp.id} style={{
+                        padding: '24px',
+                        paddingRight: '70px',
+                        background: '#fafafa',
+                        borderRadius: '12px',
+                        position: 'relative',
+                        border: '1px solid #e5e7eb'
+                    }}>
+                        <button
+                            onClick={() => removeExp(idx)}
+                            style={{
+                                position: 'absolute',
+                                top: '16px',
+                                right: '16px',
+                                color: '#ef4444',
+                                background: '#fef2f2',
+                                padding: '10px',
+                                borderRadius: '8px',
+                                border: '1px solid #fee2e2',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#fee2e2';
+                                e.currentTarget.style.transform = 'scale(1.05)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#fef2f2';
+                                e.currentTarget.style.transform = 'scale(1)';
+                            }}
+                        >
+                            <Trash2 style={{ width: '18px', height: '18px' }} />
+                        </button>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                            gap: '14px'
+                        }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Company Name</label>
+                                <input
+                                    type="text"
+                                    value={exp.company}
+                                    onChange={e => updateExp(idx, 'company', e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#ffffff',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: '#111827',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Role / Position</label>
+                                <input
+                                    type="text"
+                                    value={exp.role}
+                                    onChange={e => updateExp(idx, 'role', e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#ffffff',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: '#111827',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Location</label>
+                                <input
+                                    type="text"
+                                    value={exp.location}
+                                    onChange={e => updateExp(idx, 'location', e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#ffffff',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: '#111827',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Start Date</label>
+                                <input
+                                    type="month"
+                                    value={exp.startDate}
+                                    onChange={e => updateExp(idx, 'startDate', e.target.value)}
+                                    max={exp.endDate || undefined}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#ffffff',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: '#111827',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>End Date</label>
+                                <input
+                                    type="month"
+                                    value={exp.endDate}
+                                    disabled={exp.isCurrent}
+                                    onChange={e => updateExp(idx, 'endDate', e.target.value)}
+                                    min={exp.startDate || undefined}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: exp.isCurrent ? '#f3f4f6' : '#ffffff',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: exp.isCurrent ? '#9ca3af' : '#111827',
+                                        outline: 'none',
+                                        cursor: exp.isCurrent ? 'not-allowed' : 'auto'
+                                    }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', paddingTop: '24px' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={exp.isCurrent}
+                                        onChange={e => updateExp(idx, 'isCurrent', e.target.checked)}
+                                        style={{
+                                            width: '18px',
+                                            height: '18px',
+                                            cursor: 'pointer',
+                                            accentColor: '#667eea'
+                                        }}
+                                    />
+                                    <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>Currently Working Here</span>
+                                </label>
+                            </div>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Description</label>
+                                <textarea
+                                    value={exp.description}
+                                    onChange={e => updateExp(idx, 'description', e.target.value)}
+                                    rows={3}
+                                    placeholder="Describe your role and responsibilities..."
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#ffffff',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: '#111827',
+                                        outline: 'none',
+                                        resize: 'vertical',
+                                        fontFamily: 'inherit',
+                                        lineHeight: '1.5'
+                                    }}
+                                />
+                            </div>
                         </div>
                     </div>
                 ))}
-                {data.experience.length === 0 && <p className="text-slate-500 italic">No experience added.</p>}
+                <button
+                    onClick={addExp}
+                    style={{
+                        color: '#2563eb',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: '#eff6ff',
+                        padding: '12px 20px',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        border: '1px solid #bfdbfe',
+                        cursor: 'pointer'
+                    }}
+                >
+                    <Plus style={{ width: '18px', height: '18px' }} /> Add Experience
+                </button>
             </div>
         );
     };
 
     const renderCertifications = () => {
-        // Simplified certification renderer
-        if (editingSection === 'certifications') {
-            const addCert = () => setTempData(prev => ({
-                ...prev, certifications: [...prev.certifications, {
-                    id: Date.now().toString(), name: '', organization: '', url: '', expiryDate: '', doesNotExpire: false
-                }]
-            }));
+        const addCert = () => {
+            handleChange('certifications', [...data.certifications, {
+                id: Date.now().toString(), name: '', organization: '', url: '', expiryDate: '', doesNotExpire: false
+            }]);
+        };
 
+        const updateCert = (index: number, field: keyof Certification, val: any) => {
+            const newCerts = [...data.certifications];
+            newCerts[index] = { ...newCerts[index], [field]: val };
+            handleChange('certifications', newCerts);
+        };
+
+        const removeCert = (index: number) => {
+            handleChange('certifications', data.certifications.filter((_, i) => i !== index));
+        };
+
+        if (!isEditMode) {
             return (
-                <div className="space-y-4">
-                    {tempData.certifications.map((cert, idx) => (
-                        <div key={cert.id} className="p-4 bg-slate-50 rounded border border-slate-200 space-y-3 relative">
-                            <button onClick={() => {
-                                const newCerts = [...tempData.certifications]; newCerts.splice(idx, 1); setTempData({ ...tempData, certifications: newCerts });
-                            }} className="absolute top-2 right-2 text-red-500"><Trash2 className="w-4 h-4" /></button>
-                            <input className="input-field" placeholder="Certificate Name" value={cert.name} onChange={e => {
-                                const nc = [...tempData.certifications]; nc[idx].name = e.target.value; setTempData({ ...tempData, certifications: nc });
-                            }} />
-                            <input className="input-field" placeholder="Organization" value={cert.organization} onChange={e => {
-                                const nc = [...tempData.certifications]; nc[idx].organization = e.target.value; setTempData({ ...tempData, certifications: nc });
-                            }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {data.certifications.map(cert => (
+                        <div key={cert.id} style={{
+                            display: 'flex',
+                            gap: '16px',
+                            alignItems: 'flex-start',
+                            padding: '20px',
+                            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                            borderRadius: '12px',
+                            border: '1px solid #fde68a',
+                            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)'
+                        }}>
+                            <div style={{
+                                width: '48px',
+                                height: '48px',
+                                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                                borderRadius: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)'
+                            }}>
+                                <Award style={{ width: '24px', height: '24px', color: '#ffffff' }} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <p style={{ fontWeight: '600', color: '#111827', fontSize: '16px', margin: 0 }}>{cert.name}</p>
+                                <p style={{ fontSize: '14px', color: '#4b5563', marginTop: '4px' }}>{cert.organization}</p>
+                                {cert.expiryDate && !cert.doesNotExpire && (
+                                    <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '8px' }}>Expires: {cert.expiryDate}</p>
+                                )}
+                            </div>
                         </div>
                     ))}
-                    <button onClick={addCert} className="text-blue-600 font-medium flex gap-2"><Plus className="w-4 h-4" /> Add Certification</button>
+                    {data.certifications.length === 0 && <p style={{ color: '#6b7280', fontStyle: 'italic', fontSize: '14px' }}>No certifications added yet.</p>}
                 </div>
             );
         }
 
         return (
-            <div className="space-y-3">
-                {data.certifications.map(cert => (
-                    <div key={cert.id} className="flex gap-3 items-center">
-                        <Award className="w-5 h-5 text-yellow-500" />
-                        <div>
-                            <p className="font-medium">{cert.name}</p>
-                            <p className="text-sm text-slate-500">{cert.organization}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {data.certifications.map((cert, idx) => (
+                    <div key={cert.id} style={{
+                        padding: '24px',
+                        paddingRight: '70px',
+                        background: '#fafafa',
+                        borderRadius: '12px',
+                        position: 'relative',
+                        border: '1px solid #e5e7eb'
+                    }}>
+                        <button
+                            onClick={() => removeCert(idx)}
+                            style={{
+                                position: 'absolute',
+                                top: '16px',
+                                right: '16px',
+                                color: '#ef4444',
+                                background: '#fef2f2',
+                                padding: '10px',
+                                borderRadius: '8px',
+                                border: '1px solid #fee2e2',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#fee2e2';
+                                e.currentTarget.style.transform = 'scale(1.05)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#fef2f2';
+                                e.currentTarget.style.transform = 'scale(1)';
+                            }}
+                        >
+                            <Trash2 style={{ width: '18px', height: '18px' }} />
+                        </button>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                            gap: '14px'
+                        }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Certificate Name</label>
+                                <input
+                                    type="text"
+                                    value={cert.name}
+                                    onChange={e => updateCert(idx, 'name', e.target.value)}
+                                    placeholder="e.g., AWS Certified Developer"
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#ffffff',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: '#111827',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Organization</label>
+                                <input
+                                    type="text"
+                                    value={cert.organization}
+                                    onChange={e => updateCert(idx, 'organization', e.target.value)}
+                                    placeholder="e.g., Amazon Web Services"
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#ffffff',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        color: '#111827',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
                         </div>
                     </div>
                 ))}
-                {data.certifications.length === 0 && <p className="text-slate-500 italic">No certifications added.</p>}
+                <button
+                    onClick={addCert}
+                    style={{
+                        color: '#2563eb',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: '#eff6ff',
+                        padding: '12px 20px',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        border: '1px solid #bfdbfe',
+                        cursor: 'pointer'
+                    }}
+                >
+                    <Plus style={{ width: '18px', height: '18px' }} /> Add Certification
+                </button>
             </div>
         );
     };
 
     const renderResume = () => {
-        const isEditing = editingSection === 'resume';
-        if (isEditing) {
+        if (!isEditMode) {
             return (
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
-                    <input type="file" className="hidden" id="resume-upload" onChange={e => {
-                        const file = e.target.files?.[0];
-                        if (file) setTempData(prev => ({ ...prev, resume: file, resumeName: file.name }));
-                    }} />
-                    <label htmlFor="resume-upload" className="cursor-pointer">
-                        <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                        <p className="text-sm text-slate-600">Click to upload resume (PDF/DOC)</p>
-                        {tempData.resumeName && <p className="mt-2 text-blue-600 font-medium">{tempData.resumeName}</p>}
-                    </label>
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center shrink-0">
+                        <FileText className="w-6 h-6 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="font-semibold text-gray-900 text-base">{data.resumeName || "No Resume Uploaded"}</p>
+                        {data.resumeUrl && (
+                            <a
+                                href={`${API_BASE_URL}${data.resumeUrl}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-sm text-blue-600 font-medium hover:underline mt-1 inline-block"
+                            >
+                                Download Resume
+                            </a>
+                        )}
+                    </div>
                 </div>
             );
         }
+
         return (
-            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <FileText className="w-8 h-8 text-red-500" />
-                <div>
-                    <p className="font-medium text-slate-800">{data.resumeName || "No Resume Uploaded"}</p>
-                    {data.resumeUrl && (
-                        <a
-                            href={`${API_BASE_URL}${data.resumeUrl}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs text-blue-600 font-medium hover:underline"
-                        >
-                            Download
-                        </a>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
+                <input
+                    type="file"
+                    accept=".pdf"
+                    className="hidden"
+                    id="resume-upload"
+                    onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                            // Validate file type
+                            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                                alert('Please upload only PDF files');
+                                return;
+                            }
+                            handleChange('resume', file);
+                            handleChange('resumeName', file.name);
+                        }
+                    }}
+                />
+                <label htmlFor="resume-upload" className="cursor-pointer block">
+                    <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-700 font-medium mb-1 text-sm">Click to upload resume</p>
+                    <p className="text-xs text-gray-500">PDF only (Max 5MB)</p>
+                    {data.resumeName && (
+                        <p className="mt-3 text-blue-600 font-medium flex items-center justify-center gap-2 text-sm">
+                            <CheckCircle className="w-4 h-4" /> {data.resumeName}
+                        </p>
                     )}
-                </div>
+                </label>
             </div>
         );
     };
 
     const renderLinks = () => {
-        if (editingSection === 'links') {
+        if (!isEditMode) {
             return (
-                <div className="space-y-4">
-                    <div>
-                        <label className="label">GitHub URL</label>
-                        <input className="input-field" value={tempData.githubUrl} onChange={e => handleTempChange('githubUrl', e.target.value)} />
-                    </div>
-                    <div>
-                        <label className="label">LinkedIn URL</label>
-                        <input className="input-field" value={tempData.linkedinUrl} onChange={e => handleTempChange('linkedinUrl', e.target.value)} />
-                    </div>
+                <div className="space-y-3">
+                    {data.githubUrl && (
+                        <a
+                            href={data.githubUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                        >
+                            <Github className="w-5 h-5 text-gray-700" />
+                            <span className="text-blue-600 group-hover:underline font-medium text-sm">{data.githubUrl}</span>
+                        </a>
+                    )}
+                    {data.linkedinUrl && (
+                        <a
+                            href={data.linkedinUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                        >
+                            <Linkedin className="w-5 h-5 text-blue-600" />
+                            <span className="text-blue-600 group-hover:underline font-medium text-sm">{data.linkedinUrl}</span>
+                        </a>
+                    )}
+                    {!data.githubUrl && !data.linkedinUrl && <p className="text-gray-500 italic text-sm">No links added yet.</p>}
                 </div>
             );
         }
+
         return (
-            <div className="space-y-3">
-                {data.githubUrl && (
-                    <a href={data.githubUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline">
-                        <Github className="w-4 h-4 text-slate-800" /> {data.githubUrl}
-                    </a>
-                )}
-                {data.linkedinUrl && (
-                    <a href={data.linkedinUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline">
-                        <Linkedin className="w-4 h-4 text-blue-700" /> {data.linkedinUrl}
-                    </a>
-                )}
-                {!data.githubUrl && !data.linkedinUrl && <p className="text-slate-500 italic">No links added.</p>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                    <label style={{ display: 'flex', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px', alignItems: 'center', gap: '6px' }}>
+                        <Github style={{ width: '16px', height: '16px' }} /> GitHub URL
+                        <span style={{ color: '#9ca3af', fontSize: '12px', fontWeight: 'normal' }}>(Must start with https://)</span>
+                    </label>
+                    <input
+                        type="url"
+                        placeholder="https://github.com/username"
+                        value={data.githubUrl}
+                        onChange={e => handleChange('githubUrl', e.target.value)}
+                        onBlur={() => {
+                            if (data.githubUrl && !validateUrl(data.githubUrl)) {
+                                setErrors(prev => ({ ...prev, githubUrl: "Please enter a valid URL starting with http:// or https://" }));
+                            } else {
+                                setErrors(prev => {
+                                    const newErrors = { ...prev };
+                                    delete newErrors.githubUrl;
+                                    return newErrors;
+                                });
+                            }
+                        }}
+                        style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            background: '#ffffff',
+                            border: errors.githubUrl ? '2px solid #ef4444' : '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            color: '#111827',
+                            outline: 'none'
+                        }}
+                    />
+                    {errors.githubUrl && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', fontWeight: '500' }}>⚠️ {errors.githubUrl}</p>}
+                </div>
+                <div>
+                    <label style={{ display: 'flex', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px', alignItems: 'center', gap: '6px' }}>
+                        <Linkedin style={{ width: '16px', height: '16px' }} /> LinkedIn URL
+                        <span style={{ color: '#9ca3af', fontSize: '12px', fontWeight: 'normal' }}>(Must start with https://)</span>
+                    </label>
+                    <input
+                        type="url"
+                        placeholder="https://linkedin.com/in/username"
+                        value={data.linkedinUrl}
+                        onChange={e => handleChange('linkedinUrl', e.target.value)}
+                        onBlur={() => {
+                            if (data.linkedinUrl && !validateUrl(data.linkedinUrl)) {
+                                setErrors(prev => ({ ...prev, linkedinUrl: "Please enter a valid URL starting with http:// or https://" }));
+                            } else {
+                                setErrors(prev => {
+                                    const newErrors = { ...prev };
+                                    delete newErrors.linkedinUrl;
+                                    return newErrors;
+                                });
+                            }
+                        }}
+                        style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            background: '#ffffff',
+                            border: errors.linkedinUrl ? '2px solid #ef4444' : '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            color: '#111827',
+                            outline: 'none'
+                        }}
+                    />
+                    {errors.linkedinUrl && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', fontWeight: '500' }}>⚠️ {errors.linkedinUrl}</p>}
+                </div>
             </div>
         );
     };
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] pb-20">
+        <div style={{
+            minHeight: '100vh',
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+        }}>
             {/* Header */}
-            <div className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                <div className="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
-                    <h1 className="text-xl font-bold text-slate-900">Candidate Profile</h1>
-                    <div className="flex items-center gap-3">
+            <div style={{
+                background: '#ffffff',
+                borderBottom: '1px solid #e5e7eb',
+                position: 'sticky',
+                top: 0,
+                zIndex: 1000,
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)'
+            }}>
+                <div style={{
+                    maxWidth: '1200px',
+                    margin: '0 auto',
+                    padding: '20px 28px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                }}>
+                    <div>
+                        <h1 style={{
+                            fontSize: '26px',
+                            fontWeight: '700',
+                            color: '#1f2937',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            margin: 0
+                        }}>
+                            <User style={{ width: '30px', height: '30px', color: '#667eea' }} />
+                            Candidate Profile
+                        </h1>
+                        <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>Manage your professional information</p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {!isEditMode ? (
+                            <button
+                                onClick={() => setIsEditMode(true)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '12px 24px',
+                                    borderRadius: '10px',
+                                    fontWeight: '600',
+                                    color: '#ffffff',
+                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    fontSize: '14px',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                                    transition: 'transform 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                            >
+                                <Pencil style={{ width: '18px', height: '18px' }} />
+                                Edit Profile
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleSave}
+                                disabled={loading}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '12px 24px',
+                                    borderRadius: '10px',
+                                    fontWeight: '600',
+                                    color: '#ffffff',
+                                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                    fontSize: '14px',
+                                    border: 'none',
+                                    cursor: loading ? 'not-allowed' : 'pointer',
+                                    opacity: loading ? 0.6 : 1,
+                                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
+                                    transition: 'transform 0.2s'
+                                }}
+                                onMouseEnter={(e) => !loading && (e.currentTarget.style.transform = 'translateY(-2px)')}
+                                onMouseLeave={(e) => !loading && (e.currentTarget.style.transform = 'translateY(0)')}
+                            >
+                                {loading ? (
+                                    <>
+                                        <div style={{
+                                            width: '18px',
+                                            height: '18px',
+                                            border: '3px solid white',
+                                            borderTop: '3px solid transparent',
+                                            borderRadius: '50%',
+                                            animation: 'spin 1s linear infinite'
+                                        }}></div>
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save style={{ width: '18px', height: '18px' }} />
+                                        Save Changes
+                                    </>
+                                )}
+                            </button>
+                        )}
                         <button
                             onClick={handleLogout}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-700 hover:bg-slate-100 border border-slate-300 transition-all"
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '12px 24px',
+                                borderRadius: '10px',
+                                fontWeight: '600',
+                                color: '#ffffff',
+                                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                fontSize: '14px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
+                                transition: 'transform 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                         >
-                            <LogOut className="w-4 h-4" />
+                            <LogOut style={{ width: '18px', height: '18px' }} />
                             Logout
-                        </button>
-                        <button
-                            onClick={handleGlobalSubmit}
-                            disabled={loading}
-                            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
-                        >
-                            {loading ? 'Saving...' : 'Save Profile'}
                         </button>
                     </div>
                 </div>
             </div>
+            <style>{`
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+            `}</style>
 
             {/* Message Toast */}
             {message && (
-                <div className={`max-w-5xl mx-auto mt-4 px-6 py-3 rounded-lg flex items-center gap-2 ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {message.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <X className="w-5 h-5" />}
-                    {message.text}
+                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 28px', marginTop: '20px' }}>
+                    <div style={{
+                        padding: '16px 20px',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+                        background: message.type === 'success' ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+                        color: message.type === 'success' ? '#065f46' : '#991b1b',
+                        border: message.type === 'success' ? '1px solid #a7f3d0' : '1px solid #fecaca'
+                    }}>
+                        {message.type === 'success' ? (
+                            <CheckCircle style={{ width: '22px', height: '22px', flexShrink: 0 }} />
+                        ) : (
+                            <X style={{ width: '22px', height: '22px', flexShrink: 0 }} />
+                        )}
+                        <span style={{ fontWeight: '500', fontSize: '14px', flex: 1 }}>{message.text}</span>
+                        <button
+                            onClick={() => setMessage(null)}
+                            style={{
+                                marginLeft: 'auto',
+                                background: 'rgba(0,0,0,0.05)',
+                                borderRadius: '6px',
+                                padding: '6px',
+                                border: 'none',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <X style={{ width: '16px', height: '16px' }} />
+                        </button>
+                    </div>
                 </div>
             )}
 
-            {/* Content */}
-            <div className="max-w-5xl mx-auto px-6 py-8">
+            {/* Loading State */}
+            {isLoading ? (
+                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 28px', paddingTop: '80px', paddingBottom: '80px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{
+                            width: '60px',
+                            height: '60px',
+                            border: '5px solid #667eea',
+                            borderTop: '5px solid transparent',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                            marginBottom: '20px'
+                        }}></div>
+                        <p style={{ color: '#6b7280', fontSize: '15px', fontWeight: '500' }}>Loading your profile...</p>
+                    </div>
+                </div>
+            ) : (
+                /* Content */
+                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 28px' }}>
+                    <SectionCard title="Basic Information">
+                        {renderBasicInfo()}
+                    </SectionCard>
 
-                <SectionCard
-                    title="Basic Information"
-                    icon={null}
-                    isEditing={editingSection === 'basic'}
-                    onEdit={() => startEditing('basic')}
-                    onSave={() => saveSection('basic')}
-                    onCancel={cancelEditing}
-                >
-                    {renderBasicInfo()}
-                </SectionCard>
+                    <SectionCard title="Profile Summary" icon={FileText}>
+                        {renderSummary()}
+                    </SectionCard>
 
-                <SectionCard
-                    title="Profile Summary"
-                    icon={FileText}
-                    isEditing={editingSection === 'summary'}
-                    onEdit={() => startEditing('summary')}
-                    onSave={() => saveSection('summary')}
-                    onCancel={cancelEditing}
-                >
-                    {renderSummary()}
-                </SectionCard>
+                    <SectionCard title="Key Skills" icon={Award}>
+                        {renderSkills()}
+                    </SectionCard>
 
-                <SectionCard
-                    title="Key Skills"
-                    icon={Award}
-                    isEditing={editingSection === 'skills'}
-                    onEdit={() => startEditing('skills')}
-                    onSave={() => saveSection('skills')}
-                    onCancel={cancelEditing}
-                >
-                    {renderSkills()}
-                </SectionCard>
+                    <SectionCard title="Education" icon={GraduationCap}>
+                        {renderEducation()}
+                    </SectionCard>
 
-                <SectionCard
-                    title="Education"
-                    icon={GraduationCap}
-                    isEditing={editingSection === 'education'}
-                    onEdit={() => startEditing('education')}
-                    onSave={() => saveSection('education')}
-                    onCancel={cancelEditing}
-                >
-                    {renderEducation()}
-                </SectionCard>
+                    <SectionCard title="Work Experience" icon={Briefcase}>
+                        {renderExperience()}
+                    </SectionCard>
 
-                <SectionCard
-                    title="Experience"
-                    icon={Briefcase}
-                    isEditing={editingSection === 'experience'}
-                    onEdit={() => startEditing('experience')}
-                    onSave={() => saveSection('experience')}
-                    onCancel={cancelEditing}
-                >
-                    {renderExperience()}
-                </SectionCard>
+                    <SectionCard title="Certifications" icon={Award}>
+                        {renderCertifications()}
+                    </SectionCard>
 
-                <SectionCard
-                    title="Certifications"
-                    icon={Award}
-                    isEditing={editingSection === 'certifications'}
-                    onEdit={() => startEditing('certifications')}
-                    onSave={() => saveSection('certifications')}
-                    onCancel={cancelEditing}
-                >
-                    {renderCertifications()}
-                </SectionCard>
+                    <SectionCard title="Resume" icon={FileText}>
+                        {renderResume()}
+                    </SectionCard>
 
-                <SectionCard
-                    title="Resume"
-                    icon={FileText}
-                    isEditing={editingSection === 'resume'}
-                    onEdit={() => startEditing('resume')}
-                    onSave={() => saveSection('resume')}
-                    onCancel={cancelEditing}
-                >
-                    {renderResume()}
-                </SectionCard>
-
-                <SectionCard
-                    title="Important Links"
-                    icon={Globe}
-                    isEditing={editingSection === 'links'}
-                    onEdit={() => startEditing('links')}
-                    onSave={() => saveSection('links')}
-                    onCancel={cancelEditing}
-                >
-                    {renderLinks()}
-                </SectionCard>
-
-            </div>
-
-            <style>{`
-        .label {
-            display: block;
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: #334155;
-            margin-bottom: 0.25rem;
-        }
-        .input-field {
-            width: 100%;
-            padding: 0.5rem 0.75rem;
-            border-radius: 0.5rem;
-            border: 1px solid #CBD5E1;
-            background-color: #F8FAFC;
-            transition: all 0.2s;
-        }
-        .input-field:focus {
-            outline: none;
-            border-color: #3B82F6;
-            background-color: #FFFFFF;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-      `}</style>
+                    <SectionCard title="Social Links" icon={Globe}>
+                        {renderLinks()}
+                    </SectionCard>
+                </div>
+            )}
         </div>
     );
 }

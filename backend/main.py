@@ -66,6 +66,7 @@ job_applied_collection = db["job-applied"]
 refresh_tokens_collection = db["refresh_tokens"]
 interview_webhook_collection = db["interview_webhooks"]
 interview_feedback_collection = db["interview-feedback"]
+offer_webhook_collection = db["offer_webhooks"]
 
 # FastAPI app
 app = FastAPI(
@@ -146,6 +147,9 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 async def signup(user_data: UserSignup):
     """
     User/Organization Signup - Send OTP to email
+    
+    IMPORTANT: This endpoint ONLY sends OTP. Account creation happens ONLY
+    after successful OTP verification in /api/auth/verify-otp endpoint.
     """
     try:
         # Check if user already exists
@@ -160,7 +164,7 @@ async def signup(user_data: UserSignup):
                 detail=f"{user_data.user_type.capitalize()} already exists with this email"
             )
         
-        # Generate and store OTP
+        # Generate and store OTP (NO account creation here)
         otp = generate_otp()
         await store_otp(db, user_data.email, otp)
         
@@ -187,6 +191,9 @@ async def signup(user_data: UserSignup):
 async def verify_otp_and_create_user(data: dict = Body(...)):
     """
     Verify OTP and create user account
+    
+    SECURITY: Account is ONLY created AFTER successful OTP verification.
+    If OTP verification fails, no account is created.
     """
     try:
         # Extract fields from request body
@@ -203,15 +210,38 @@ async def verify_otp_and_create_user(data: dict = Body(...)):
                 detail="Missing required fields: email, password, name, and otp are required"
             )
         
-        # Verify OTP
+        # ===== CRITICAL: Verify OTP FIRST - account creation ONLY happens after successful verification =====
         otp_result = await verify_otp(db, email, otp)
         
-        if not otp_result["success"]:
+        # If OTP verification fails, immediately return error - NO account creation
+        if not otp_result.get("success", False):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=otp_result["message"]
+                detail=otp_result.get("message", "OTP verification failed. Account cannot be created.")
             )
         
+        # Additional safety check: Ensure OTP verification was definitely successful
+        if otp_result.get("success") is not True:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OTP verification failed. Account cannot be created."
+            )
+        
+        # ===== Only proceed with account creation if OTP verification was successful =====
+        
+        # Check if user already exists (in case of race condition or duplicate signup)
+        existing_user = await users_collection.find_one({
+            "email": email,
+            "user_type": user_type
+        })
+        
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{user_type.capitalize()} account already exists with this email"
+            )
+        
+        # Only after successful OTP verification, proceed with account creation
         # Hash password
         hashed_password = get_password_hash(password)
         
@@ -1203,6 +1233,64 @@ async def get_job_applicants(
                     "additional_details": applicant.get("additional_details", "")
                 }
             
+            # If status is invitation_sent, fetch webhook/invitation details
+            if applicant.get("status") == "invitation_sent":
+                # Get the most recent webhook for this candidate (not cancelled)
+                webhook_cursor = interview_webhook_collection.find({
+                    "job_id": job_id,
+                    "applicantEmail": applicant.get("email"),
+                    "status": {"$ne": "cancelled"}  # Exclude cancelled invitations
+                }).sort("created_at", -1).limit(1)
+                
+                webhook_data = None
+                async for webhook in webhook_cursor:
+                    webhook_data = webhook
+                    break
+                
+                # If no active webhook found, try to get any webhook (including cancelled ones)
+                if not webhook_data:
+                    webhook_cursor = interview_webhook_collection.find({
+                        "job_id": job_id,
+                        "applicantEmail": applicant.get("email")
+                    }).sort("created_at", -1).limit(1)
+                    
+                    async for webhook in webhook_cursor:
+                        webhook_data = webhook
+                        break
+                
+                if webhook_data:
+                    # Add invitation details to applicant (will be displayed in ongoing_rounds format)
+                    if not applicant.get("ongoing_rounds"):
+                        applicant["ongoing_rounds"] = []
+                    
+                    # Create a round object from webhook data
+                    invitation_round = {
+                        "round": webhook_data.get("round"),
+                        "team": webhook_data.get("team"),
+                        "location_type": webhook_data.get("location_type", "online"),
+                        "status": "invitation_sent",
+                        "webhook_id": webhook_data.get("webhook_id"),
+                        "sent_at": webhook_data.get("created_at")
+                    }
+                    
+                    # If already scheduled (status=submitted in webhook), add scheduling details
+                    if webhook_data.get("status") == "submitted":
+                        invitation_round.update({
+                            "interviewer_name": webhook_data.get("interviewer_name"),
+                            "interviewer_email": webhook_data.get("interviewer_email"),
+                            "interview_date": webhook_data.get("selected_date"),
+                            "interview_time": webhook_data.get("selected_time"),
+                            "meeting_link": webhook_data.get("meeting_link"),
+                            "location": webhook_data.get("location"),
+                            "scheduled_at": webhook_data.get("submitted_at"),
+                            "status": "scheduled"
+                        })
+                    
+                    applicant["ongoing_rounds"].append(invitation_round)
+                else:
+                    # Log for debugging - webhook not found but status is invitation_sent
+                    print(f"⚠️ Warning: Candidate {applicant.get('email')} has status 'invitation_sent' but no webhook found for job_id {job_id}")
+            
             applicants.append(applicant)
 
         return {
@@ -1256,6 +1344,16 @@ async def get_closed_job_posts(current_user: dict = Depends(get_current_user)):
                         candidate["applied_at"] = applied_record.get("applied_at")
                     else:
                         candidate["status"] = "applied"
+
+            # Count offer_accepted applicants AFTER updating statuses
+            # This ensures the count matches the actual candidates in applied_candidates array
+            offer_accepted_count = 0
+            if job.get("applied_candidates"):
+                offer_accepted_count = sum(1 for candidate in job["applied_candidates"] 
+                                          if candidate.get("status") == "offer_accepted")
+            
+            # Add offer_accepted_count to job object
+            job["offer_accepted_count"] = offer_accepted_count
 
             jobs.append(job)
 
@@ -1374,26 +1472,53 @@ async def apply_for_job(
         
         # Get user profile to fetch resume path and parsed resume data
         user_profile = await user_data_collection.find_one({"user_email": current_user["email"]})
-        resume_url = ""
-        parsed_resume_data = None
         
-        if user_profile:
+        # Get resume_url from request body first, fallback to profile
+        resume_url = application_data.get("resume_url", "")
+        if not resume_url and user_profile:
             resume_url = user_profile.get("resumeUrl", "") or user_profile.get("resume_url", "")
-            parsed_resume_data = user_profile.get("parsed_resume_data")
+        
+        print(f"📄 [APPLY] Resume URL for {current_user['email']}: {resume_url}")
+        
+        if not resume_url:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Resume not found. Please upload your resume in your profile before applying."
+            )
+        
+        # Always parse resume freshly on each application for accurate matching
+        # This ensures LLM is called every time user applies
+        parsed_resume_data = None
+        try:
+            print(f"🤖 [APPLY] Starting LLM resume parsing for {current_user['email']}...")
             
-            # If parsed data doesn't exist but resume URL exists, parse the resume
-            if not parsed_resume_data and resume_url:
-                try:
-                    # Read resume file from path
-                    resume_path = static_dir / resume_url.lstrip("/static/")
-                    if resume_path.exists():
-                        with open(resume_path, "rb") as f:
-                            resume_content = f.read()
-                        parser = ResumeParser()
-                        resume_text = parser.extract_text_from_pdf(resume_content)
-                        parsed_resume_data = parser.parse(resume_text)
-                except Exception as e:
-                    print(f"⚠️ Warning: Could not parse resume for comparison: {e}")
+            # Read resume file from path
+            resume_path = static_dir / resume_url.lstrip("/static/")
+            if not resume_path.exists():
+                raise Exception(f"Resume file not found at path: {resume_path}")
+            
+            with open(resume_path, "rb") as f:
+                resume_content = f.read()
+            
+            parser = ResumeParser()
+            resume_text = parser.extract_text_from_pdf(resume_content)
+            parsed_resume_data = parser.parse(resume_text)
+            
+            print(f"✅ [APPLY] LLM resume parsing completed successfully for {current_user['email']}!")
+            
+            # Save parsed data back to user profile
+            await user_data_collection.update_one(
+                {"user_email": current_user["email"]},
+                {"$set": {"parsed_resume_data": parsed_resume_data}}
+            )
+        except Exception as e:
+            print(f"❌ [APPLY] Error parsing resume with LLM: {e}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to process resume with AI. Please ensure your resume is uploaded correctly. Error: {str(e)}"
+            )
         
         # Prepare candidate data with resume URL
         candidate_data = {
@@ -1406,6 +1531,8 @@ async def apply_for_job(
         additional_details = ""
         if parsed_resume_data and org_email:
             try:
+                print(f"🔍 [APPLY] Running comparator agent for {current_user['email']}...")
+                
                 # Get organization employees data
                 org_data = await organization_data_collection.find_one({"email": org_email})
                 employees_data = []
@@ -1414,9 +1541,11 @@ async def apply_for_job(
                     for emp in org_data["employees_details"]:
                         if emp.get("parsed_resume_data"):
                             employees_data.append(emp["parsed_resume_data"])
+                    print(f"📊 [APPLY] Found {len(employees_data)} employees for comparison")
                 
                 # Get job description from JD file if available
                 jd_file_path = job_details.get("file_path", "")
+                job_description = ""
                 if jd_file_path:
                     try:
                         jd_path = static_dir / jd_file_path.lstrip("/static/")
@@ -1429,22 +1558,28 @@ async def apply_for_job(
                                 job_description = ""
                                 for page in pdf_reader.pages:
                                     job_description += page.extract_text() + "\n"
+                                print(f"📄 [APPLY] Extracted JD from PDF")
                             except:
                                 # If not PDF, try reading as text
                                 job_description = jd_content.decode('utf-8', errors='ignore')
+                                print(f"📄 [APPLY] Read JD as text file")
                     except Exception as e:
-                        print(f"⚠️ Warning: Could not read JD file: {e}")
+                        print(f"⚠️ [APPLY] Warning: Could not read JD file: {e}")
                 
                 # Run comparator agent if we have employees data
                 if employees_data:
+                    print(f"🚀 [APPLY] Starting comparator agent with {len(employees_data)} employees...")
                     comparator = ComparatorAgent(employees_data)
                     if job_description:
+                        print(f"📝 [APPLY] Running full comparison with JD and employees...")
                         additional_details = comparator.process(
                             candidate_data=parsed_resume_data,
                             job_description=job_description,
                             additional_info={}
                         )
+                        print(f"✅ [APPLY] Comparator agent completed successfully!")
                     else:
+                        print(f"📝 [APPLY] Running employee comparison only (no JD available)...")
                         # If no JD, just compare with employees
                         employee_comparison = comparator._compare_with_employees(parsed_resume_data)
                         # Format just employee comparison
@@ -1456,8 +1591,11 @@ async def apply_for_job(
                             {"jd_relevance_score": 0, "ai_suggestion": "Job description not available"},
                             {}
                         )
+                        print(f"✅ [APPLY] Employee comparison completed successfully!")
+                else:
+                    print(f"⚠️ [APPLY] No employees data available for comparison")
             except Exception as e:
-                print(f"⚠️ Warning: Error running comparator agent: {e}")
+                print(f"❌ [APPLY] Error running comparator agent: {e}")
                 import traceback
                 traceback.print_exc()
         
@@ -2242,25 +2380,39 @@ async def submit_interview_form(request: SubmitInterviewFormRequest):
             print(f"⚠️ Error creating Meet space: {e}")
             meeting_link = f"https://meet.google.com/new"
         
+        # Get job_id early (needed for location fetch)
+        job_id = webhook_record.get("job_id")
+        
         if location_type == "offline":
-            # Fetch organization location from organization profile
-            org_email = webhook_record.get("orgEmail")
-            org_profile = await organization_data_collection.find_one({
-                "email": org_email
-            })
-            if org_profile:
-                location = org_profile.get("location", "")
-                if not location:
-                    print(f"⚠️ Organization location not found for {org_email}")
+            # Fetch location from ongoing-jobs based on job_id
+            location = None
+            
+            if job_id:
+                # First check ongoing-jobs collection (as requested)
+                job_details_for_location = await ongoing_jobs_collection.find_one({"job_id": job_id})
+                
+                # If not found in ongoing, check other collections as fallback
+                if not job_details_for_location:
+                    for collection in [open_jobs_collection, closed_jobs_collection]:
+                        job_details_for_location = await collection.find_one({"job_id": job_id})
+                        if job_details_for_location:
+                            break
+                
+                if job_details_for_location:
+                    location = job_details_for_location.get("location", "")
+                    if not location:
+                        print(f"⚠️ Job location not found for job_id: {job_id}")
+                else:
+                    print(f"⚠️ Job not found for job_id: {job_id}")
             else:
-                print(f"⚠️ Organization profile not found for {org_email}")
+                print(f"⚠️ job_id not found in webhook record")
+            
             # For offline: meeting_link is still created (as backup), but location is primary
         else:
             # Online: meeting_link is primary
             location_type = "online"
         
         # Get job details and JD file
-        job_id = webhook_record.get("job_id")
         job_details = None
         jd_file_path = None
         
@@ -2794,6 +2946,210 @@ async def check_feedback_status(request: Dict[str, Any] = Body(...)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error checking feedback status: {str(e)}"
+        )
+
+
+# ==================== OFFER MANAGEMENT ENDPOINTS ====================
+
+class SendOfferLetterRequest(BaseModel):
+    applicantEmail: str
+    applicantName: str
+    orgEmail: str
+    orgName: str
+    job_id: str
+
+@app.post("/api/send-offer-letter")
+async def send_offer_letter(
+    applicantEmail: str = Form(...),
+    applicantName: str = Form(...),
+    orgEmail: str = Form(...),
+    orgName: str = Form(...),
+    job_id: str = Form(...),
+    offer_letter: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Send offer letter to candidate with accept/reject webhook form
+    """
+    try:
+        # Verify user is an organization
+        if current_user.get("user_type") != "organization":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only organizations can access this endpoint"
+            )
+        
+        # Save offer letter file
+        file_ext = os.path.splitext(offer_letter.filename)[1]
+        unique_filename = f"{uuid.uuid4()}{file_ext}"
+        offers_dir = static_dir / "files" / "offers"
+        offers_dir.mkdir(parents=True, exist_ok=True)
+        file_full_path = offers_dir / unique_filename
+        
+        with open(file_full_path, "wb") as buffer:
+            shutil.copyfileobj(offer_letter.file, buffer)
+        
+        file_path = f"/static/files/offers/{unique_filename}"
+        
+        # Create webhook ID for offer response
+        webhook_id = str(uuid.uuid4())
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        form_link = f"{frontend_url}/offer-response?offer_id={webhook_id}"
+        
+        # Store offer webhook
+        await offer_webhook_collection.insert_one({
+            "webhook_id": webhook_id,
+            "applicantEmail": applicantEmail,
+            "applicantName": applicantName,
+            "orgEmail": orgEmail,
+            "orgName": orgName,
+            "job_id": job_id,
+            "offer_letter_path": file_path,
+            "status": "pending",  # pending, accepted, rejected
+            "created_at": datetime.utcnow()
+        })
+        
+        # Update status to offer_sent
+        await job_applied_collection.update_one(
+            {"job_id": job_id, "email": applicantEmail},
+            {
+                "$set": {
+                    "status": "offer_sent",
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        
+        # Update status in job collections
+        for collection in [open_jobs_collection, ongoing_jobs_collection, closed_jobs_collection]:
+            await collection.update_one(
+                {
+                    "job_id": job_id,
+                    "applied_candidates.email": applicantEmail
+                },
+                {
+                    "$set": {
+                        "applied_candidates.$.status": "offer_sent",
+                        "applied_candidates.$.updated_at": datetime.utcnow()
+                    }
+                }
+            )
+        
+        # Get job role from ongoing-jobs collection
+        job_details = await ongoing_jobs_collection.find_one({"job_id": job_id})
+        job_role = job_details.get("role", "the position") if job_details else "the position"
+        
+        # Send email with offer letter
+        from services.email_service import send_offer_letter_email
+        success = await send_offer_letter_email(
+            applicant_email=applicantEmail,
+            applicant_name=applicantName,
+            org_name=orgName,
+            job_role=job_role,
+            offer_letter_path=str(file_full_path),
+            form_link=form_link
+        )
+        
+        return {
+            "success": True,
+            "message": "Offer letter sent successfully" if success else "Offer letter created, but email sending failed",
+            "webhook_id": webhook_id,
+            "email_sent": success
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error sending offer letter: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error sending offer letter: {str(e)}"
+        )
+
+
+class SubmitOfferResponseRequest(BaseModel):
+    offer_id: str
+    response: str  # "accept" or "reject"
+
+@app.post("/api/submit-offer-response")
+async def submit_offer_response(request: SubmitOfferResponseRequest):
+    """
+    Handle offer acceptance/rejection from candidate
+    """
+    try:
+        # Find the webhook record
+        webhook_record = await offer_webhook_collection.find_one({
+            "webhook_id": request.offer_id
+        })
+        
+        if not webhook_record:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Invalid offer ID"
+            )
+        
+        # Check if already responded
+        if webhook_record.get("status") != "pending":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Offer response has already been submitted"
+            )
+        
+        job_id = webhook_record.get("job_id")
+        applicant_email = webhook_record.get("applicantEmail")
+        
+        # Update webhook status
+        new_status = "accepted" if request.response == "accept" else "rejected"
+        await offer_webhook_collection.update_one(
+            {"webhook_id": request.offer_id},
+            {
+                "$set": {
+                    "status": new_status,
+                    "responded_at": datetime.utcnow()
+                }
+            }
+        )
+        
+        # Update candidate status
+        candidate_status = "offer_accepted" if request.response == "accept" else "rejected"
+        await job_applied_collection.update_one(
+            {"job_id": job_id, "email": applicant_email},
+            {
+                "$set": {
+                    "status": candidate_status,
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        
+        # Update status in job collections
+        for collection in [open_jobs_collection, ongoing_jobs_collection, closed_jobs_collection]:
+            await collection.update_one(
+                {
+                    "job_id": job_id,
+                    "applied_candidates.email": applicant_email
+                },
+                {
+                    "$set": {
+                        "applied_candidates.$.status": candidate_status,
+                        "applied_candidates.$.updated_at": datetime.utcnow()
+                    }
+                }
+            )
+        
+        return {
+            "success": True,
+            "message": f"Offer {new_status} successfully",
+            "status": candidate_status
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error submitting offer response: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error submitting offer response: {str(e)}"
         )
 
 

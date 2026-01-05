@@ -22,6 +22,8 @@ export const API_ENDPOINTS = {
   ORGANIZATION_JOBPOST_CLOSED: `${API_BASE_URL}/api/organization-jobpost/closed`,
   GET_JOB_APPLICANTS: (jobId: string) => `${API_BASE_URL}/api/organization-jobpost/${jobId}/applicants`,
   UPDATE_APPLICANT_STATUS: (jobId: string, email: string) => `${API_BASE_URL}/api/organization-jobpost/${jobId}/applicant/${email}/status`,
+  SEND_OFFER_LETTER: `${API_BASE_URL}/api/send-offer-letter`,
+  SUBMIT_OFFER_RESPONSE: `${API_BASE_URL}/api/submit-offer-response`,
   JOBS: `${API_BASE_URL}/api/jobs`,
   JOBS_APPLIED: `${API_BASE_URL}/api/jobs/applied`,
   ADMIN_MANAGE_JOB_STATUS: `${API_BASE_URL}/api/admin/manage-job-status`,

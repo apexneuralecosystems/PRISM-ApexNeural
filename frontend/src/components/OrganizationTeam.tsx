@@ -39,49 +39,126 @@ const TeamCard = ({
     onDelete: (teamId: string) => void;
 }) => {
     return (
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                    <Users className="w-6 h-6 text-blue-600" />
-                    <h3 className="text-lg font-semibold text-slate-800">{team.team_name}</h3>
+        <div style={{ 
+            background: '#ffffff', 
+            borderRadius: '12px', 
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)', 
+            padding: '24px',
+            transition: 'all 0.2s ease-in-out',
+            transform: 'translateY(0)',
+            border: '1px solid #e2e8f0'
+        }}
+        onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.1)';
+        }}
+        onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.05)';
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ 
+                        background: 'linear-gradient(to bottom right, #60a5fa, #3b82f6)', 
+                        borderRadius: '10px', 
+                        padding: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <Users style={{ width: '20px', height: '20px', color: '#ffffff' }} />
+                    </div>
+                    <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b', margin: 0 }}>{team.team_name}</h3>
                 </div>
-                <div className="flex gap-2">
+                <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                         onClick={() => onEdit(team)}
-                        className="p-2 text-black hover:bg-slate-50 rounded-lg transition-colors"
+                        style={{ 
+                            padding: '8px', 
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
                         title="Edit team"
                     >
-                        <Edit className="w-4 h-4" />
+                        <Edit style={{ width: '16px', height: '16px', color: '#475569' }} />
                     </button>
                     <button
                         onClick={() => onDelete(team.team_id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        style={{ 
+                            padding: '8px', 
+                            background: '#fef2f2',
+                            border: '1px solid #fee2e2',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#fef2f2'}
                         title="Delete team"
                     >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 style={{ width: '16px', height: '16px', color: '#ef4444' }} />
                     </button>
                 </div>
             </div>
 
-            <div className="space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {team.members.map((member, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                        <div className="flex-1">
-                            <p className="font-medium text-slate-800">{member.name}</p>
-                            <p className="text-sm text-slate-600">{member.email}</p>
+                    <div key={index} style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        padding: '16px', 
+                        background: 'linear-gradient(to bottom right, #f8fafc, #f1f5f9)',
+                        borderRadius: '10px',
+                        border: '1px solid #e2e8f0',
+                        transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(to bottom right, #e0f2fe, #dbeafe)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(to bottom right, #f8fafc, #f1f5f9)'}>
+                        <div style={{ flex: 1 }}>
+                            <p style={{ fontWeight: '500', color: '#1e293b', margin: '0 0 4px 0' }}>{member.name}</p>
+                            <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{member.email}</p>
                         </div>
                         <a
                             href={member.calendar_link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline text-sm"
+                            style={{ 
+                                color: '#2563eb',
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                textDecoration: 'none',
+                                padding: '6px 12px',
+                                background: '#dbeafe',
+                                borderRadius: '6px',
+                                transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#2563eb';
+                                e.currentTarget.style.color = '#ffffff';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#dbeafe';
+                                e.currentTarget.style.color = '#2563eb';
+                            }}
                         >
                             Calendar
                         </a>
                     </div>
                 ))}
                 {team.members.length === 0 && (
-                    <p className="text-slate-500 italic text-center py-4">No members added yet</p>
+                    <p style={{ color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', padding: '20px', margin: 0 }}>No members added yet</p>
                 )}
             </div>
         </div>
@@ -151,95 +228,249 @@ const TeamFormModal = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                    <h2 className="text-xl font-semibold text-slate-800">
+        <div style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            background: 'rgba(0, 0, 0, 0.5)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            padding: '16px', 
+            zIndex: 50,
+            backdropFilter: 'blur(4px)'
+        }}>
+            <div style={{ 
+                background: '#ffffff', 
+                borderRadius: '16px', 
+                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.2)', 
+                maxWidth: '800px', 
+                width: '100%', 
+                maxHeight: '90vh', 
+                overflowY: 'auto',
+                animation: 'slideIn 0.2s ease-out'
+            }}>
+                <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    padding: '24px', 
+                    borderBottom: '1px solid #e2e8f0',
+                    background: 'linear-gradient(to right, #6366f1, #8b5cf6)'
+                }}>
+                    <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#ffffff', margin: 0 }}>
                         {editingTeam ? 'Edit Team' : 'Create New Team'}
                     </h2>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        style={{ 
+                            padding: '8px', 
+                            background: 'rgba(255, 255, 255, 0.2)',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
                     >
-                        <X className="w-5 h-5" />
+                        <X style={{ width: '20px', height: '20px', color: '#ffffff' }} />
                     </button>
                 </div>
 
-                <div className="p-6 space-y-6">
+                <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     {/* Team Name */}
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#475569', marginBottom: '8px' }}>
                             Team Name *
                         </label>
                         <input
                             type="text"
                             value={teamName}
                             onChange={(e) => setTeamName(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            style={{ 
+                                width: '100%', 
+                                padding: '12px 16px', 
+                                border: '1px solid #cbd5e1', 
+                                borderRadius: '10px',
+                                fontSize: '14px',
+                                outline: 'none',
+                                transition: 'all 0.15s ease',
+                                boxSizing: 'border-box'
+                            }}
+                            onFocus={(e) => {
+                                e.currentTarget.style.borderColor = '#2563eb';
+                                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                            }}
+                            onBlur={(e) => {
+                                e.currentTarget.style.borderColor = '#cbd5e1';
+                                e.currentTarget.style.boxShadow = 'none';
+                            }}
                             placeholder="Enter team name"
                         />
                     </div>
 
                     {/* Team Members */}
                     <div>
-                        <div className="flex items-center justify-between mb-4">
-                            <label className="block text-sm font-medium text-slate-700">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#475569' }}>
                                 Team Members
                             </label>
                             <button
                                 onClick={addMember}
-                                className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '8px', 
+                                    padding: '8px 16px', 
+                                    fontSize: '14px', 
+                                    background: 'linear-gradient(to bottom right, #2563eb, #1d4ed8)',
+                                    color: '#ffffff',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontWeight: '500',
+                                    transition: 'all 0.15s ease',
+                                    boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
+                                    transform: 'translateY(0)'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 2px 6px rgba(37, 99, 235, 0.3)';
+                                }}
                             >
-                                <UserPlus className="w-4 h-4" />
+                                <UserPlus style={{ width: '16px', height: '16px' }} />
                                 Add Member
                             </button>
                         </div>
 
-                        <div className="space-y-4">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             {members.map((member, index) => (
-                                <div key={index} className="border border-slate-200 rounded-lg p-4 relative">
+                                <div key={index} style={{ 
+                                    border: '1px solid #e2e8f0', 
+                                    borderRadius: '12px', 
+                                    padding: '20px', 
+                                    position: 'relative',
+                                    background: 'linear-gradient(to bottom right, #f8fafc, #f1f5f9)',
+                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
+                                }}>
                                     <button
                                         onClick={() => removeMember(index)}
-                                        className="absolute top-2 right-2 p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                        style={{ 
+                                            position: 'absolute', 
+                                            top: '12px', 
+                                            right: '12px', 
+                                            padding: '6px',
+                                            background: '#fef2f2',
+                                            border: '1px solid #fee2e2',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = '#fef2f2'}
                                         title="Remove member"
                                     >
-                                        <UserMinus className="w-4 h-4" />
+                                        <UserMinus style={{ width: '16px', height: '16px', color: '#ef4444' }} />
                                     </button>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', paddingRight: '40px' }}>
                                         <div>
-                                            <label className="block text-xs font-medium text-slate-600 mb-1">
+                                            <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#64748b', marginBottom: '6px' }}>
                                                 Name
                                             </label>
                                             <input
                                                 type="text"
                                                 value={member.name}
                                                 onChange={(e) => updateMember(index, 'name', e.target.value)}
-                                                className="w-full px-2 py-1 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                                style={{ 
+                                                    width: '100%', 
+                                                    padding: '8px 12px', 
+                                                    fontSize: '14px', 
+                                                    border: '1px solid #cbd5e1', 
+                                                    borderRadius: '8px',
+                                                    outline: 'none',
+                                                    transition: 'all 0.15s ease',
+                                                    boxSizing: 'border-box',
+                                                    background: '#ffffff'
+                                                }}
+                                                onFocus={(e) => {
+                                                    e.currentTarget.style.borderColor = '#2563eb';
+                                                    e.currentTarget.style.boxShadow = '0 0 0 2px rgba(37, 99, 235, 0.1)';
+                                                }}
+                                                onBlur={(e) => {
+                                                    e.currentTarget.style.borderColor = '#cbd5e1';
+                                                    e.currentTarget.style.boxShadow = 'none';
+                                                }}
                                                 placeholder="Employee name"
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-medium text-slate-600 mb-1">
+                                            <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#64748b', marginBottom: '6px' }}>
                                                 Email
                                             </label>
                                             <input
                                                 type="email"
                                                 value={member.email}
                                                 onChange={(e) => updateMember(index, 'email', e.target.value)}
-                                                className="w-full px-2 py-1 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                                style={{ 
+                                                    width: '100%', 
+                                                    padding: '8px 12px', 
+                                                    fontSize: '14px', 
+                                                    border: '1px solid #cbd5e1', 
+                                                    borderRadius: '8px',
+                                                    outline: 'none',
+                                                    transition: 'all 0.15s ease',
+                                                    boxSizing: 'border-box',
+                                                    background: '#ffffff'
+                                                }}
+                                                onFocus={(e) => {
+                                                    e.currentTarget.style.borderColor = '#2563eb';
+                                                    e.currentTarget.style.boxShadow = '0 0 0 2px rgba(37, 99, 235, 0.1)';
+                                                }}
+                                                onBlur={(e) => {
+                                                    e.currentTarget.style.borderColor = '#cbd5e1';
+                                                    e.currentTarget.style.boxShadow = 'none';
+                                                }}
                                                 placeholder="employee@email.com"
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-medium text-slate-600 mb-1">
+                                            <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#64748b', marginBottom: '6px' }}>
                                                 Calendar Link
                                             </label>
                                             <input
                                                 type="url"
                                                 value={member.calendar_link}
                                                 onChange={(e) => updateMember(index, 'calendar_link', e.target.value)}
-                                                className="w-full px-2 py-1 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                                style={{ 
+                                                    width: '100%', 
+                                                    padding: '8px 12px', 
+                                                    fontSize: '14px', 
+                                                    border: '1px solid #cbd5e1', 
+                                                    borderRadius: '8px',
+                                                    outline: 'none',
+                                                    transition: 'all 0.15s ease',
+                                                    boxSizing: 'border-box',
+                                                    background: '#ffffff'
+                                                }}
+                                                onFocus={(e) => {
+                                                    e.currentTarget.style.borderColor = '#2563eb';
+                                                    e.currentTarget.style.boxShadow = '0 0 0 2px rgba(37, 99, 235, 0.1)';
+                                                }}
+                                                onBlur={(e) => {
+                                                    e.currentTarget.style.borderColor = '#cbd5e1';
+                                                    e.currentTarget.style.boxShadow = 'none';
+                                                }}
                                                 placeholder="https://calendar.google.com/..."
                                             />
                                         </div>
@@ -248,48 +479,101 @@ const TeamFormModal = ({
                             ))}
 
                             {members.length === 0 && (
-                                <div className="text-center py-8 text-slate-500">
-                                    <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                    <p>No team members added yet</p>
-                                    <p className="text-sm">Click "Add Member" to get started</p>
+                                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8' }}>
+                                    <Users style={{ width: '48px', height: '48px', margin: '0 auto 8px', opacity: 0.5 }} />
+                                    <p style={{ margin: '0 0 4px 0', fontSize: '14px' }}>No team members added yet</p>
+                                    <p style={{ fontSize: '12px', margin: 0 }}>Click "Add Member" to get started</p>
                                 </div>
                             )}
                         </div>
                     </div>
 
                     {/* Instructions */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h4 className="text-sm font-medium text-blue-800 mb-2">Instructions:</h4>
-                        <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Fill in the team name and add team members</li>
-                            <li>• Each member needs a name, email, and calendar link</li>
-                            <li>• You can add or remove members as needed</li>
-                            <li>• All changes will be saved to your organization data</li>
+                    <div style={{ 
+                        background: 'linear-gradient(to bottom right, #dbeafe, #e0e7ff)',
+                        border: '1px solid #93c5fd',
+                        borderRadius: '12px',
+                        padding: '16px'
+                    }}>
+                        <h4 style={{ fontSize: '14px', fontWeight: '500', color: '#1e40af', margin: '0 0 8px 0' }}>Instructions:</h4>
+                        <ul style={{ fontSize: '13px', color: '#1e3a8a', margin: 0, paddingLeft: '20px', lineHeight: '1.6' }}>
+                            <li>Fill in the team name and add team members</li>
+                            {/* <li>Each member needs a name, email, and calendar link</li> */}
+                            <li>You can add or remove members as needed</li>
+                            {/* <li>All changes will be saved to your organization data</li> */}
+                            <li>Calendar link is the link to the calendar of the employee</li>
+                            <li>Enable public access in Google Calendar settings and share the public iCal (ICS) address.</li>
                         </ul>
                     </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200 bg-slate-50">
+                <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'flex-end', 
+                    gap: '12px', 
+                    padding: '20px 24px', 
+                    borderTop: '1px solid #e2e8f0',
+                    background: '#f8fafc'
+                }}>
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 text-black hover:bg-slate-100 rounded-lg transition-colors"
                         disabled={loading}
+                        style={{ 
+                            padding: '10px 20px',
+                            color: '#475569',
+                            background: '#ffffff',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '8px',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.15s ease',
+                            fontWeight: '500',
+                            fontSize: '14px',
+                            opacity: loading ? 0.5 : 1
+                        }}
+                        onMouseEnter={(e) => !loading && (e.currentTarget.style.background = '#f1f5f9')}
+                        onMouseLeave={(e) => !loading && (e.currentTarget.style.background = '#ffffff')}
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={loading}
-                        className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '8px', 
+                            padding: '10px 24px',
+                            background: loading ? '#94a3b8' : 'linear-gradient(to bottom right, #16a34a, #15803d)',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            opacity: loading ? 0.7 : 1,
+                            transition: 'all 0.15s ease',
+                            fontWeight: '500',
+                            fontSize: '14px',
+                            boxShadow: '0 2px 6px rgba(22, 163, 74, 0.3)',
+                            transform: 'translateY(0)'
+                        }}
+                        onMouseEnter={(e) => !loading && (e.currentTarget.style.transform = 'translateY(-2px)')}
+                        onMouseLeave={(e) => !loading && (e.currentTarget.style.transform = 'translateY(0)')}
                     >
                         {loading ? (
                             <>
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <div style={{ 
+                                    width: '16px', 
+                                    height: '16px', 
+                                    border: '2px solid white', 
+                                    borderTop: '2px solid transparent', 
+                                    borderRadius: '50%', 
+                                    animation: 'spin 1s linear infinite' 
+                                }}></div>
                                 Saving...
                             </>
                         ) : (
                             <>
-                                <Save className="w-4 h-4" />
+                                <Save style={{ width: '16px', height: '16px' }} />
                                 {editingTeam ? 'Update Team' : 'Create Team'}
                             </>
                         )}
@@ -465,44 +749,150 @@ export function OrganizationTeam() {
 
     if (loading && teams.length === 0) {
         return (
-            <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-slate-600">Loading teams...</p>
+            <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #f8fafc, #e0f2fe)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{ 
+                        width: '48px', 
+                        height: '48px', 
+                        border: '4px solid #2563eb', 
+                        borderTop: '4px solid transparent', 
+                        borderRadius: '50%', 
+                        animation: 'spin 1s linear infinite',
+                        margin: '0 auto 16px'
+                    }}></div>
+                    <p style={{ color: '#475569', fontSize: '16px', fontWeight: '500' }}>Loading teams...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] pb-20">
+        <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #f8fafc, #e0f2fe)', paddingBottom: '80px' }}>
             {/* Header */}
-            <div className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <Building2 className="w-6 h-6 text-blue-600" />
-                        <h1 className="text-xl font-bold text-slate-900">Organization Teams</h1>
+            <div style={{ 
+                background: 'linear-gradient(to right, #6366f1, #8b5cf6)',
+                borderBottom: '1px solid #e2e8f0',
+                position: 'sticky',
+                top: 0,
+                zIndex: 10,
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+            }}>
+                <div style={{ 
+                    maxWidth: '1200px', 
+                    margin: '0 auto', 
+                    padding: '16px 24px', 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ 
+                            background: 'rgba(255, 255, 255, 0.2)', 
+                            borderRadius: '10px', 
+                            padding: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <Building2 style={{ width: '24px', height: '24px', color: '#ffffff' }} />
+                        </div>
+                        <div>
+                            <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: 0, lineHeight: '1.2' }}>Organization Teams</h1>
+                            <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.9)', margin: '2px 0 0 0' }}>Manage your interview teams</p>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={handleLogout}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-black hover:bg-slate-100 border border-slate-300 transition-all"
-                        >
-                            <LogOut className="w-4 h-4" />
-                            Logout
-                        </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                         <button
                             onClick={() => navigate('/organization-profile')}
-                            className="px-4 py-2 rounded-lg font-medium text-black hover:bg-slate-100 border border-slate-300 transition-all"
+                            style={{ 
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '10px 16px',
+                                borderRadius: '8px',
+                                fontWeight: '500',
+                                fontSize: '14px',
+                                color: '#ffffff',
+                                background: 'rgba(255, 255, 255, 0.15)',
+                                border: '1px solid rgba(255, 255, 255, 0.3)',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                transform: 'translateY(0)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                            }}
                         >
                             Profile
                         </button>
                         <button
                             onClick={handleCreateTeam}
-                            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 shadow-sm transition-all"
+                            style={{ 
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '10px 20px',
+                                borderRadius: '8px',
+                                fontWeight: '500',
+                                fontSize: '14px',
+                                color: '#ffffff',
+                                background: '#2563eb',
+                                border: 'none',
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)',
+                                transition: 'all 0.15s ease',
+                                transform: 'translateY(0)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#1d4ed8';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.5)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#2563eb';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)';
+                            }}
                         >
-                            <Plus className="w-4 h-4" />
+                            <Plus style={{ width: '16px', height: '16px' }} />
                             Add Team
+                        </button>
+                        <button
+                            onClick={handleLogout}
+                            style={{ 
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '10px 16px',
+                                borderRadius: '8px',
+                                fontWeight: '500',
+                                fontSize: '14px',
+                                color: '#ffffff',
+                                background: '#dc2626',
+                                border: 'none',
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)',
+                                transition: 'all 0.15s ease',
+                                transform: 'translateY(0)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#b91c1c';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#dc2626';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                            }}
+                        >
+                            <LogOut style={{ width: '16px', height: '16px' }} />
+                            Logout
                         </button>
                     </div>
                 </div>
@@ -510,31 +900,108 @@ export function OrganizationTeam() {
 
             {/* Message Toast */}
             {message && (
-                <div className={`max-w-6xl mx-auto mt-4 px-6 py-3 rounded-lg flex items-center gap-2 ${
-                    message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                    {message.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-                    {message.text}
+                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '16px 24px 0' }}>
+                    <div style={{ 
+                        padding: '16px 20px',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        background: message.type === 'success' ? 'linear-gradient(to right, #d1fae5, #a7f3d0)' : 'linear-gradient(to right, #fee2e2, #fecaca)',
+                        border: `1px solid ${message.type === 'success' ? '#86efac' : '#fca5a5'}`,
+                        color: message.type === 'success' ? '#065f46' : '#991b1b',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+                        fontWeight: '500',
+                        animation: 'slideDown 0.3s ease-out'
+                    }}>
+                        {message.type === 'success' ? 
+                            <CheckCircle style={{ width: '20px', height: '20px', flexShrink: 0 }} /> : 
+                            <AlertCircle style={{ width: '20px', height: '20px', flexShrink: 0 }} />
+                        }
+                        <span style={{ flex: 1 }}>{message.text}</span>
+                        <button
+                            onClick={() => setMessage(null)}
+                            style={{ 
+                                padding: '4px',
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                borderRadius: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                            <X style={{ width: '16px', height: '16px' }} />
+                        </button>
+                    </div>
                 </div>
             )}
 
             {/* Content */}
-            <div className="max-w-6xl mx-auto px-6 py-8">
+            <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
                 {teams.length === 0 ? (
-                    <div className="text-center py-12">
-                        <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-slate-700 mb-2">No teams created yet</h3>
-                        <p className="text-slate-500 mb-6">Create your first team to get started with team management</p>
+                    <div style={{ 
+                        textAlign: 'center', 
+                        padding: '80px 20px',
+                        background: '#ffffff',
+                        borderRadius: '16px',
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)'
+                    }}>
+                        <div style={{ 
+                            background: 'linear-gradient(to bottom right, #dbeafe, #e0e7ff)',
+                            borderRadius: '20px',
+                            width: '120px',
+                            height: '120px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 24px'
+                        }}>
+                            <Users style={{ width: '64px', height: '64px', color: '#3b82f6' }} />
+                        </div>
+                        <h3 style={{ fontSize: '24px', fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0' }}>No teams created yet</h3>
+                        <p style={{ color: '#64748b', margin: '0 0 32px 0', fontSize: '15px' }}>Create your first team to get started with team management</p>
                         <button
                             onClick={handleCreateTeam}
-                            className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 shadow-sm transition-all"
+                            style={{ 
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                background: 'linear-gradient(to bottom right, #2563eb, #1d4ed8)',
+                                color: '#ffffff',
+                                padding: '14px 28px',
+                                borderRadius: '10px',
+                                fontWeight: '500',
+                                fontSize: '15px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 16px rgba(37, 99, 235, 0.4)',
+                                transition: 'all 0.2s ease',
+                                transform: 'translateY(0)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-3px)';
+                                e.currentTarget.style.boxShadow = '0 8px 24px rgba(37, 99, 235, 0.5)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 16px rgba(37, 99, 235, 0.4)';
+                            }}
                         >
-                            <Plus className="w-5 h-5" />
+                            <Plus style={{ width: '20px', height: '20px' }} />
                             Create Your First Team
                         </button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
+                        gap: '24px' 
+                    }}>
                         {teams.map((team) => (
                             <TeamCard
                                 key={team.team_id}
@@ -555,6 +1022,34 @@ export function OrganizationTeam() {
                 editingTeam={editingTeam}
                 loading={loading}
             />
+
+            {/* Add keyframe animations */}
+            <style>{`
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                @keyframes slideIn {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+            `}</style>
         </div>
     );
 }

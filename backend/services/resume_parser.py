@@ -16,11 +16,18 @@ class ResumeParser:
         self.prompt_template = ChatPromptTemplate.from_messages([
             (
                 "system",
-                """You are an AI Resume Parser. You will receive raw text extracted from a PDF resume. Your task is to extract all structured information and return only valid JSON according to the schema described below.
+                """You are an AI Resume Parser. You will receive raw text extracted from a PDF resume. Your task is to extract all structured information and return ONLY valid JSON according to the schema described below.
 
-Rules & Guidelines:
-- Output only JSON — do not include markdown, explanations, or extra text.
-- Missing fields must be returned as "info not available in resume".
+CRITICAL JSON FORMATTING RULES:
+- Output ONLY valid JSON with NO markdown code fences (no ```json or ```)
+- Use double quotes for all strings, NOT single quotes
+- NO trailing commas before closing braces or brackets
+- NO comments in the JSON
+- Ensure all brackets and braces are properly closed
+
+Data Extraction Rules:
+- Missing fields must be returned as "info not available in resume"
+- Extract exact information from the resume, do not invent data
 
 Education:
 Return as a list of objects. Each object must have:
@@ -59,12 +66,12 @@ Name, Number, Email:
 Extract full name, phone number, and email address. Return "info not available in resume" if missing.
 
 Output formatting:
-- Always return valid JSON.
-- Flatten nested data, no extra brackets or markdown.
-- Use lists of objects for multi-entry fields (Education, Experience, Projects).
-- Use lists of strings for simple multi-entry fields (Schools, Skills, Certifications, Languages, Achievements, Hobbies).
+- Return valid JSON with "output" as the root key
+- Use lists of objects for multi-entry fields (Education, Experience, Projects)
+- Use lists of strings for simple multi-entry fields (School, Skills, Certifications, Languages, Achievements, Activities_Hobbies)
 
-Return ONLY the JSON object with "output" as the root key.""",
+Return ONLY the JSON object. Example structure:
+{{"output": {{"Name": "...", "Email": "...", "Skills": ["...", "..."], "Education": [{{"College": "...", "Degree": "...", "Specialization": "...", "Grade": "..."}}]}}}}""",
             ),
             ("human", "Resume Text:\n{resume_text}"),
         ])
@@ -80,6 +87,20 @@ Return ONLY the JSON object with "output" as the root key.""",
         except Exception as e:
             raise ValueError(f"Failed to extract text from PDF: {str(e)}")
 
+    def _clean_json_string(self, json_str: str) -> str:
+        """Clean common JSON formatting issues from LLM responses."""
+        # Remove trailing commas before closing braces/brackets
+        json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
+        
+        # Remove comments (// and /* */)
+        json_str = re.sub(r'//.*?$', '', json_str, flags=re.MULTILINE)
+        json_str = re.sub(r'/\*.*?\*/', '', json_str, flags=re.DOTALL)
+        
+        # Fix common quote issues - but be careful with apostrophes in content
+        # This is a simple approach that may need refinement
+        
+        return json_str.strip()
+    
     def parse(self, resume_text: str) -> Dict[str, Any]:
         """
         Parse raw resume text into structured JSON and normalize to the schema.
@@ -97,38 +118,70 @@ Return ONLY the JSON object with "output" as the root key.""",
         # Remove markdown code fences if present
         if content.startswith("```"):
             lines = content.split("\n")
-            content = "\n".join(lines[1:-1]) if len(lines) > 2 else content
+            # Handle both ```json and ``` cases
+            if lines[0].lower().startswith("```json") or lines[0] == "```":
+                content = "\n".join(lines[1:])
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
         
+        # Try parsing multiple strategies
+        parsing_attempts = []
+        
+        # Attempt 1: Direct parse
         try:
             parsed_data = json.loads(content)
-        except json.JSONDecodeError as e:
-            # Try to find JSON object in the response
-            json_match = re.search(r"\{.*\}", content, re.DOTALL)
-            if json_match:
-                try:
-                    parsed_data = json.loads(json_match.group())
-                except json.JSONDecodeError:
-                    # Try to fix common JSON issues
-                    json_str = json_match.group()
-                    # Fix single quotes to double quotes (basic fix)
-                    json_str = json_str.replace("'", '"')
-                    # Try to extract just the output key if present
-                    if '"output"' in json_str or "'output'" in json_str:
-                        output_match = re.search(r'["\']output["\']\s*:\s*(\{.*\})', json_str, re.DOTALL)
-                        if output_match:
-                            try:
-                                parsed_data = {"output": json.loads(output_match.group(1))}
-                            except:
-                                pass
-                    try:
-                        parsed_data = json.loads(json_str)
-                    except json.JSONDecodeError:
-                        raise ValueError(f"Failed to parse JSON from LLM response: {str(e)}")
-            else:
-                raise ValueError(f"Failed to parse JSON from LLM response: {str(e)}")
+            data = parsed_data.get("output", parsed_data)
+            return self._normalize_output(data)
+        except json.JSONDecodeError as e1:
+            parsing_attempts.append(f"Direct parse failed: {str(e1)}")
         
-        data = parsed_data.get("output", parsed_data)
-        return self._normalize_output(data)
+        # Attempt 2: Clean and parse
+        try:
+            cleaned_content = self._clean_json_string(content)
+            parsed_data = json.loads(cleaned_content)
+            data = parsed_data.get("output", parsed_data)
+            return self._normalize_output(data)
+        except json.JSONDecodeError as e2:
+            parsing_attempts.append(f"Cleaned parse failed: {str(e2)}")
+        
+        # Attempt 3: Extract JSON object with regex
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if json_match:
+            try:
+                json_str = json_match.group()
+                json_str = self._clean_json_string(json_str)
+                parsed_data = json.loads(json_str)
+                data = parsed_data.get("output", parsed_data)
+                return self._normalize_output(data)
+            except json.JSONDecodeError as e3:
+                parsing_attempts.append(f"Regex extraction failed: {str(e3)}")
+        
+        # Attempt 4: Try to extract just the "output" object
+        output_pattern = r'"output"\s*:\s*\{[^}]*(?:\{[^}]*\}[^}]*)*\}'
+        output_match = re.search(output_pattern, content, re.DOTALL)
+        if output_match:
+            try:
+                # Wrap in braces to make valid JSON
+                json_str = "{" + output_match.group() + "}"
+                json_str = self._clean_json_string(json_str)
+                parsed_data = json.loads(json_str)
+                data = parsed_data.get("output", {})
+                return self._normalize_output(data)
+            except json.JSONDecodeError as e4:
+                parsing_attempts.append(f"Output extraction failed: {str(e4)}")
+        
+        # If all attempts fail, log details and raise error
+        print("❌ All JSON parsing attempts failed:")
+        for i, attempt in enumerate(parsing_attempts, 1):
+            print(f"   Attempt {i}: {attempt}")
+        print(f"📄 LLM Response (first 500 chars): {content[:500]}")
+        
+        # Return error with context
+        raise ValueError(
+            f"Failed to parse JSON from LLM response after {len(parsing_attempts)} attempts. "
+            f"Last error: {parsing_attempts[-1] if parsing_attempts else 'Unknown'}"
+        )
 
     # ----------------------- normalization helpers ----------------------- #
     
